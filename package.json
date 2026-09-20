@@ -26,10 +26,10 @@
     "pg": "^8.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "esbuild": "^0.28.2"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2",
     "pg-mem": "^3.0.14"
   },
   "engines": {
