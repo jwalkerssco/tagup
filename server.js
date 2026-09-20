@@ -110,6 +110,7 @@ function createApp(pool, opts) {
   }));
   app.post("/api/orgs/:id/invite", requireOrg, wrap(async (req) => authMod.inviteMember(req.session, req.body)));
   app.get("/api/orgs/:id/members", requireOrg, wrap(async (req) => authMod.listMembers(req.session)));
+  app.get("/api/orgs/:id/reps", requireOrg, wrap(async (req) => (tagupMod.canManage(req.session) ? tagupMod.repsOnList(req.session) : { error: "forbidden", status: 403 })));
   app.post("/api/orgs/:id/members/:userId", requireOrg, wrap(async (req) => authMod.setMember(req.session, req.params.userId, req.body)));
   app.post("/api/orgs/:id/invites/:inviteId/revoke", requireOrg, wrap(async (req) => authMod.revokeInvite(req.session, req.params.inviteId)));
   app.put("/api/orgs/:id", requireOrg, wrap(async (req) => authMod.updateOrg(req.session, req.body)));
@@ -125,7 +126,7 @@ function createApp(pool, opts) {
 
   /* ---- stores / teams / chains ---- */
   app.get("/api/health", (req, res) => res.json({ ok: true, mail: mailer.mode, ai: !!(o.env || process.env).ANTHROPIC_API_KEY, at: new Date().toISOString() }));
-  app.get("/api/stores", requireOrg, wrap(async (req) => tagupMod.listStores(req.session, { withStyles: req.query.styles === "1" })));
+  app.get("/api/stores", requireOrg, wrap(async (req) => tagupMod.listStores(req.session, { withStyles: req.query.styles === "1", all: req.query.all === "1" && tagupMod.canManage(req.session) })));
   app.post("/api/stores/:id/retire", requireOrg, wrap(async (req) => tagupMod.retireStore(req.session, req.params.id, req.body && req.body.restore)));
   app.get("/api/catalog", requireOrg, wrap(async (req) => catalogMod.list(req.session, { q: req.query.q, limit: req.query.limit })));
   app.post("/api/catalog/import", requireOrg, upload.single("file"), wrap(async (req) => {

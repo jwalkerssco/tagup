@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- Added 2026-09-20: an account list stands on its own -- address, and the
+-- sales rep who owns the account (name + number, as the org's system prints
+-- them). A member's rep_no is what maps a login to those accounts.
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS address  text;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS rep_name text;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS rep_no   text;
+ALTER TABLE org_members ADD COLUMN IF NOT EXISTS rep_no text;
+ALTER TABLE org_invites ADD COLUMN IF NOT EXISTS rep_no text;
+CREATE INDEX IF NOT EXISTS stores_org_rep_idx ON stores (org_id, rep_no);
 CREATE INDEX IF NOT EXISTS stores_org_idx ON stores (org_id, active);
 CREATE UNIQUE INDEX IF NOT EXISTS stores_org_storeno_uq ON stores (org_id, store_no) WHERE store_no IS NOT NULL;
 

@@ -381,6 +381,44 @@ ta("a request on a style with rules prints the rule's colour on the sheet", asyn
   });
 });
 
+ta("rep-owned accounts: a rep's picker shows only their accounts; no match falls back to every account with a reason", async () => {
+  await withServer(async (client, pool) => {
+    const a = await signupOrg(client, "Route Co", "own@route.com");
+    const A = client.as(a.token, a.org.id);
+    const rows = [{ name: "Stripes #1", storeNo: "1", address: "1 Main", repName: "Jose Esquivel", repNo: "21063" }, { name: "Stripes #2", storeNo: "2", repName: "Maria Delgado", repNo: "21071" }, { name: "Indie", storeNo: "3", repName: "Jose Esquivel", repNo: "21063" }];
+    eq((await A.post("/api/stores/import", { rows })).body.created, 3);
+    // the account list names two reps, neither on the team yet
+    const reps = await A.get("/api/orgs/" + a.org.id + "/reps");
+    eq(reps.body.reps.map((r) => r.repNo + ":" + r.accounts).sort(), ["21063:2", "21071:1"]); eq(reps.body.unmatched.length, 2);
+    // invite Jose WITH his rep #; accepting carries it onto the membership
+    await A.post("/api/orgs/" + a.org.id + "/invite", { email: "jose@route.com", role: "rep", repNo: "21063" });
+    const tok = (await pool.query("SELECT token FROM org_invites WHERE email = 'jose@route.com'")).rows[0].token;
+    const acc = await client.raw("POST", "/api/invites/accept", { token: tok, name: "Jose Esquivel", password: "hunter22" });
+    const J = client.as(acc.body.token, a.org.id);
+    const mine = await J.get("/api/stores");
+    eq(mine.body.scope, "mine"); eq(mine.body.stores.map((s) => s.name).sort(), ["Indie", "Stripes #1"]); eq(mine.body.stores[0].address || mine.body.stores[1].address, "1 Main");
+    eq((await A.get("/api/orgs/" + a.org.id + "/reps")).body.unmatched.map((r) => r.repNo), ["21071"], "Jose is matched now");
+    // the owner sees everything, and ?all=1 is a manager door only
+    eq((await A.get("/api/stores")).body.stores.length, 3); eq((await J.get("/api/stores?all=1")).body.stores.length, 2, "a rep cannot widen their own scope");
+    // a rep # that matches nothing falls back to the NAME the list carries
+    await A.post("/api/orgs/" + a.org.id + "/members/" + acc.body.user.id, { repNo: "99999" });
+    eq((await J.get("/api/stores")).body.scope, "mine", "still Jose by name");
+    // a rep the list does not know at all sees every account, and is told why
+    await A.post("/api/orgs/" + a.org.id + "/invite", { email: "pat@route.com", role: "rep" });
+    const tok2 = (await pool.query("SELECT token FROM org_invites WHERE email = 'pat@route.com'")).rows[0].token;
+    const P = client.as((await client.raw("POST", "/api/invites/accept", { token: tok2, name: "Pat Nobody", password: "hunter22" })).body.token, a.org.id);
+    const wide = await P.get("/api/stores");
+    eq(wide.body.scope, "all"); eq(wide.body.scopeReason, "unassigned"); eq(wide.body.stores.length, 3);
+    // no rep # at all, but the list names them -> matched by name
+    await A.post("/api/orgs/" + a.org.id + "/members/" + acc.body.user.id, { repNo: "" });
+    const byName = await J.get("/api/stores");
+    eq(byName.body.scope, "mine"); eq(byName.body.stores.length, 2);
+    // a re-upload of the same numbers updates address + rep in place
+    eq((await A.post("/api/stores/import", { rows: [{ name: "Stripes #1", storeNo: "1", address: "1 Main St", repName: "Maria Delgado", repNo: "21071" }] })).body.updated, 1);
+    eq((await J.get("/api/stores")).body.stores.map((s) => s.name), ["Indie"], "the account moved to Maria and left Jose's picker");
+  });
+});
+
 (async () => {
   for (const [n, f] of queue) {
     try { await f(); console.log("  ok   " + n); pass++; }

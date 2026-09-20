@@ -65,6 +65,7 @@ function Landing() {
         <Feature icon={L.Zap} title="Rules that follow the price" body="A 2-for tier gets its colour. Every promo carries Reg. $x. Set it once on the style; the rep's preview and the print sheet both obey it." />
         <Feature icon={L.Sparkles} title="Brand logos, found for you" body="tagup reads the brands off your item list, finds the logos, and has AI check each match. A person approves before anything prints." />
         <Feature icon={L.Printer} title="Any sheet in the printer" body="Materials are yours to define: tag size, sheet size, how many fit. Any style prints on any material. Avery numbers welcome." />
+        <Feature icon={L.Store} title="Your account list, as it is" body="Upload the export you already have -- account name, number, address, sales rep and rep number. Each rep's phone shows their own accounts; the sign shop sees them all." />
         <Feature icon={L.Smartphone} title="Made for a phone in a store aisle" body="Thumb-sized targets, five short steps, a preview before sending, and a status list that answers 'did my tags print?' without a phone call." />
       </div>
     </section>
@@ -180,7 +181,7 @@ const NAV = [
   { id: "styles", label: "Chain styles", icon: L.Palette, roles: ["owner", "admin"], group: "Set up" },
   { id: "materials", label: "Materials", icon: L.Layers, roles: ["owner", "admin"], group: "Set up" },
   { id: "brands", label: "Brand logos", icon: L.Sparkles, roles: ["owner", "admin"], group: "Set up" },
-  { id: "stores", label: "Stores", icon: L.Store, roles: ["owner", "admin", "manager"], group: "Set up" },
+  { id: "stores", label: "Accounts", icon: L.Store, roles: ["owner", "admin", "manager"], group: "Set up" },
   { id: "catalog", label: "Catalog", icon: L.Package, roles: ["owner", "admin", "manager"], group: "Set up" },
   { id: "team", label: "Team", icon: L.Users, roles: ["owner", "admin", "manager"], group: "Workspace" },
   { id: "settings", label: "Settings", icon: L.Settings, roles: ["owner", "admin", "manager", "rep"], group: "Workspace" },

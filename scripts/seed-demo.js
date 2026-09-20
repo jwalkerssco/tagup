@@ -17,13 +17,16 @@ async function seed(base) {
   token = su.token; org = su.org.id;
 
   // Stores off a spreadsheet, the way a customer would.
+  // The shape a VIP / route-accounting export actually has: a title row,
+  // then the header, then accounts with the sales rep who owns each.
   const stores = [
-    ["Store", "Store #", "City", "Chain", "Team"],
-    ["Stripes #2134", "2134", "Odessa", "Stripes", "West"], ["Stripes #2201", "2201", "Odessa", "Stripes", "West"], ["Stripes #2290", "2290", "Midland", "Stripes", "East"],
-    ["7-Eleven #35521", "35521", "Odessa", "7-Eleven", "West"], ["7-Eleven #35544", "35544", "Midland", "7-Eleven", "East"],
-    ["Kent Kwik #206", "206", "Odessa", "Kent Kwik", "West"], ["Kent Kwik #214", "214", "Andrews", "Kent Kwik", "East"],
-    ["H-E-B #591", "591", "Odessa", "HEB", "West"], ["Market Street #521", "521", "Odessa", "United", "West"],
-    ["Hops Scotch & Vinery", "10412", "Odessa", "", "West"], ["Jumburrito Grandview", "10877", "Odessa", "", "East"], ["Rusty Bucket Saloon", "11020", "Odessa", "", "West"],
+    ["Retail Accounts -- Odessa -- 09/20/2026"], [],
+    ["Account Name", "Account #", "Address", "City", "Chain", "Sales Rep", "Sales Rep #"],
+    ["Stripes #2134", "2134", "4210 N Grandview Ave", "Odessa", "Stripes", "Jose Esquivel", 21063], ["Stripes #2201", "2201", "1800 E 8th St", "Odessa", "Stripes", "Jose Esquivel", 21063], ["Stripes #2290", "2290", "3100 W Wadley Ave", "Midland", "Stripes", "Maria Delgado", 21071],
+    ["7-Eleven #35521", "35521", "2201 E 42nd St", "Odessa", "7-Eleven", "Jose Esquivel", 21063], ["7-Eleven #35544", "35544", "4400 N Midkiff Rd", "Midland", "7-Eleven", "Maria Delgado", 21071],
+    ["Kent Kwik #206", "206", "1301 E University Blvd", "Odessa", "Kent Kwik", "Jose Esquivel", 21063], ["Kent Kwik #214", "214", "700 N Main St", "Andrews", "Kent Kwik", "Maria Delgado", 21071],
+    ["H-E-B #591", "591", "3801 E 42nd St", "Odessa", "HEB", "Cody Courtney", 21075], ["Market Street #521", "521", "2200 N Loop 250 W", "Odessa", "United", "Jose Esquivel", 21063],
+    ["Hops Scotch & Vinery", "10412", "4330 E 52nd St", "Odessa", "", "Jose Esquivel", 21063], ["Jumburrito Grandview", "10877", "4400 N Grandview Ave", "Odessa", "", "Cody Courtney", 21075], ["Rusty Bucket Saloon", "11020", "9800 W University Blvd", "Odessa", "", "Maria Delgado", 21071],
   ];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stores), "Accounts");
   const st = await upload("/api/stores/upload", "accounts.xlsx", XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
@@ -54,7 +57,7 @@ async function seed(base) {
   for (const s of styles) { const r = await post("/api/styles", s); if (r.error) throw new Error("style " + s.name + ": " + r.error); }
 
   // Team: a rep and a manager (invites; accept the rep's so there is a real rep)
-  const inv = await post("/api/orgs/" + org + "/invite", { email: "jose@standardsales.example", role: "rep" });
+  const inv = await post("/api/orgs/" + org + "/invite", { email: "jose@standardsales.example", role: "rep", repNo: "21063" });
   await post("/api/orgs/" + org + "/invite", { email: "maria@standardsales.example", role: "manager" });
   // Accept the rep invite -- the invite token is only in the (console) email, so look it up the way the mail would carry it.
   const inviteToken = inv.ok ? await tokenForInvite(base, org, "jose@standardsales.example") : null;

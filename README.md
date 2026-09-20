@@ -48,6 +48,16 @@ node index.js
 - `src/` — React app: `app.jsx` (router, public pages, shell), `tagup-ui.jsx` (tag screens), `admin.jsx` (stores, catalog, team, settings, help), `tutorials.js` (lessons; drop a video URL in and it plays).
 - `schema.sql` — every statement `IF NOT EXISTS`. Additive changes go here; nothing ever DROPs.
 
+## Accounts
+
+The account list stands on its own: upload the export you already have -- **Account Name**,
+**Account #**, **Address**, **City**, **Chain**, **Sales Rep**, **Sales Rep #** (a route number
+works; `Route` / `Salesman` / `Street` are read as synonyms). Header on any row; re-upload
+updates by account number. A member carries a **Rep #**; a rep's picker shows the accounts
+whose rep # is theirs (else the ones whose Sales Rep reads as their name), and every account
+when the list does not know them yet -- with a note saying so. Team lists the reps the file
+names who are not on the team, one Invite each, rep # riding along.
+
 ## Rules
 
 Since a request is data and a style is data, the styles carry rules: `when` a field meets a

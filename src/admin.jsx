@@ -9,7 +9,7 @@ import { TUTORIALS } from "./tutorials";
    HOME -- checklist + the day's numbers
    ================================================================ */
 const STEPS = [
-  { k: "added_store", title: "Add your stores", sub: "One at a time, or upload the account list.", to: "/app/stores", icon: L.Store },
+  { k: "added_store", title: "Upload your account list", sub: "Name, number, address, sales rep. Reps see their own.", to: "/app/stores", icon: L.Store },
   { k: "picked_style", title: "Set up a chain style", sub: "Upload a chain's artwork or build a layout.", to: "/app/styles", icon: L.Palette },
   { k: "made_request", title: "Ask for a tag", sub: "Try the rep's flow yourself -- 30 seconds.", to: "/app/request", icon: L.Tag },
   { k: "printed_one", title: "Print a batch", sub: "Tick it in the queue, pick a sheet, print.", to: "/app/queue", icon: L.Printer },
@@ -93,38 +93,39 @@ export function StoresScreen({ canAdmin }) {
   const [edit, setEdit] = useState(null);
   const [upload, setUpload] = useState(false);
   const [msg, setMsg] = useState("");
-  function load() { api.get("/api/stores?styles=1").then((r) => setData(r)).catch(() => setData({ error: "Couldn't load stores." })); api.get("/api/orgs/" + session.org + "/teams").then((r) => setTeams((r && r.teams) || [])).catch(() => {}); }
+  function load() { api.get("/api/stores?styles=1&all=1").then((r) => setData(r)).catch(() => setData({ error: "Couldn't load stores." })); api.get("/api/orgs/" + session.org + "/teams").then((r) => setTeams((r && r.teams) || [])).catch(() => {}); }
   useEffect(load, []);
   const stores = (data && data.stores) || [];
-  const shown = stores.filter((s) => !q || (s.name + " " + (s.storeNo || "") + " " + s.city + " " + s.chainLabel).toLowerCase().includes(q.toLowerCase()));
+  const shown = stores.filter((s) => !q || (s.name + " " + (s.storeNo || "") + " " + (s.address || "") + " " + s.city + " " + s.chainLabel + " " + (s.repName || "") + " " + (s.repNo || "")).toLowerCase().includes(q.toLowerCase()));
   const chains = useMemo(() => { const m = {}; stores.forEach((s) => { const k = s.chainLabel || "Independent"; m[k] = (m[k] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); }, [stores]);
   async function retire(s) { if (!window.confirm("Retire " + s.name + "? Its request history stays; it just leaves the pickers.")) return; const r = await api.post("/api/stores/" + s.id + "/retire"); if (r.error) window.alert(r.error); else load(); }
   const teamName = (id) => (teams.find((t) => t.id === id) || {}).name || "";
   return <div className="tu-fade">
-    <PageTitle title="Stores" sub="Every store a rep can ask for a tag for. The chain decides which style prints; the team decides which manager sees it." right={canAdmin && <><Ghost small onClick={() => setUpload(true)}><L.Upload size={15} /> Upload a list</Ghost><Primary small onClick={() => setEdit({ name: "", storeNo: "", city: "", chain: "", teamId: "" })}><L.Plus size={15} /> Add a store</Primary></>} />
+    <PageTitle title="Accounts" sub="Every account a rep can ask for a tag for. The sales rep on the row is whose picker it shows in; the chain decides which style prints." right={canAdmin && <><Ghost small onClick={() => setUpload(true)}><L.Upload size={15} /> Upload account list</Ghost><Primary small onClick={() => setEdit({ name: "", storeNo: "", address: "", city: "", chain: "", repName: "", repNo: "", teamId: "" })}><L.Plus size={15} /> Add an account</Primary></>} />
     {msg && <Notice kind="ok" style={{ marginBottom: 12 }}>{msg}</Notice>}
     {data && data.error && <Notice kind="bad" style={{ marginBottom: 12 }}>{data.error}</Notice>}
     {data && !stores.length && !data.error && <div style={{ background: "#fff", border: `2px dashed ${TB.kraft}`, borderRadius: 16, padding: 28, textAlign: "center", marginBottom: 14 }}>
-      <L.Store size={36} color={TB.kraft} /><div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 17, color: TB.ink, marginTop: 8 }}>No stores yet</div>
-      <div style={{ fontSize: 13.5, color: TB.slate, marginTop: 4, maxWidth: 420, margin: "4px auto 0" }}>Upload the account list you already have -- a spreadsheet with a Name column, plus Store #, City and Chain when you have them -- or add one by hand to try it.</div>
-      {canAdmin && <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}><Primary small onClick={() => setUpload(true)}><L.Upload size={15} /> Upload a list</Primary><Ghost small onClick={() => setEdit({ name: "", storeNo: "", city: "", chain: "", teamId: "" })}>Add one store</Ghost></div>}
+      <L.Store size={36} color={TB.kraft} /><div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 17, color: TB.ink, marginTop: 8 }}>No accounts yet</div>
+      <div style={{ fontSize: 13.5, color: TB.slate, marginTop: 4, maxWidth: 460, margin: "4px auto 0" }}>Upload the account list you already have: <b>Account Name</b>, <b>Account #</b>, <b>Address</b>, <b>Sales Rep</b> and <b>Sales Rep #</b> (City and Chain too, when you have them). The header can be on any row. Or add one by hand to try it.</div>
+      {canAdmin && <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}><Primary small onClick={() => setUpload(true)}><L.Upload size={15} /> Upload account list</Primary><Ghost small onClick={() => setEdit({ name: "", storeNo: "", address: "", city: "", chain: "", repName: "", repNo: "", teamId: "" })}>Add one account</Ghost></div>}
     </div>}
     {stores.length > 0 && <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-      <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 360 }}><span style={{ position: "absolute", left: 11, top: 11 }}><L.Search size={16} color={C.mute} /></span><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stores" style={{ paddingLeft: 34 }} /></div>
-      <span style={{ fontSize: 12.5, color: TB.slate }}>{stores.length} store{stores.length === 1 ? "" : "s"} · {chains.length} chain{chains.length === 1 ? "" : "s"}</span>
+      <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 360 }}><span style={{ position: "absolute", left: 11, top: 11 }}><L.Search size={16} color={C.mute} /></span><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search accounts, reps, addresses" style={{ paddingLeft: 34 }} /></div>
+      <span style={{ fontSize: 12.5, color: TB.slate }}>{stores.length} account{stores.length === 1 ? "" : "s"} · {chains.length} chain{chains.length === 1 ? "" : "s"} · {new Set(stores.map((s) => s.repNo || s.repName).filter(Boolean)).size} rep{new Set(stores.map((s) => s.repNo || s.repName).filter(Boolean)).size === 1 ? "" : "s"}</span>
       <span style={{ flex: 1 }} />
       {chains.slice(0, 6).map(([k, n]) => <Chip key={k} ui={ui} small bg={k === "Independent" ? C.lineCool : TB.signalSoft}>{k} · {n}</Chip>)}
     </div>}
-    {stores.length > 0 && <Table cols={["Store", "#", "City", "Chain", "Team", "Tag style", canAdmin ? "" : null].filter((x) => x != null)} rows={shown.slice(0, 300).map((s) => <tr key={s.id}>
-      <td style={td}><b>{s.name}</b></td><td style={Object.assign({ color: C.mute }, td)}>{s.storeNo || "—"}</td><td style={td}>{s.city}</td>
+    {stores.length > 0 && <Table cols={["Account", "Acct #", "Address", "Chain", "Sales rep", "Tag style", canAdmin ? "" : null].filter((x) => x != null)} rows={shown.slice(0, 300).map((s) => <tr key={s.id}>
+      <td style={td}><b>{s.name}</b>{teamName(s.teamId) ? <div style={{ fontSize: 11.5, color: C.mute }}>{teamName(s.teamId)}</div> : null}</td><td style={Object.assign({ color: C.mute }, td)}>{s.storeNo || "—"}</td>
+      <td style={Object.assign({ fontSize: 12.5, color: TB.slate }, td)}>{s.address}{s.address && s.city ? ", " : ""}{s.city}</td>
       <td style={td}><Chip ui={ui} small bg={s.chainId ? TB.signalSoft : C.lineCool}>{s.chainLabel || "Independent"}</Chip></td>
-      <td style={td}>{teamName(s.teamId) || <span style={{ color: C.mute }}>—</span>}</td>
+      <td style={td}>{s.repName || s.repNo ? <><span style={{ fontWeight: 600 }}>{s.repName || "—"}</span>{s.repNo && <span style={{ color: C.mute, fontSize: 12 }}> #{s.repNo}</span>}</> : <span style={{ color: C.mute }}>—</span>}</td>
       <td style={Object.assign({ fontSize: 12.5, color: TB.slate }, td)}>{s.styleName}{s.caseCardStyleName && s.caseCardStyleName !== s.styleName ? " · " + s.caseCardStyleName : ""}</td>
-      {canAdmin && <td style={Object.assign({ whiteSpace: "nowrap", textAlign: "right" }, td)}><button onClick={() => setEdit({ id: s.id, name: s.name, storeNo: s.storeNo || "", city: s.city, chain: s.chainRaw || "", teamId: s.teamId || "" })} style={iconBtn}><L.Pencil size={15} /></button><button onClick={() => retire(s)} style={iconBtn} title="Retire"><L.Trash2 size={15} /></button></td>}
-    </tr>)} empty={q ? "No store matches." : "No stores yet."} />}
+      {canAdmin && <td style={Object.assign({ whiteSpace: "nowrap", textAlign: "right" }, td)}><button onClick={() => setEdit({ id: s.id, name: s.name, storeNo: s.storeNo || "", address: s.address || "", city: s.city, chain: s.chainRaw || "", repName: s.repName || "", repNo: s.repNo || "", teamId: s.teamId || "" })} style={iconBtn}><L.Pencil size={15} /></button><button onClick={() => retire(s)} style={iconBtn} title="Retire"><L.Trash2 size={15} /></button></td>}
+    </tr>)} empty={q ? "No account matches." : "No accounts yet."} />}
     {shown.length > 300 && <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>Showing 300 of {shown.length} -- keep typing.</div>}
     {edit && <StoreForm s={edit} teams={teams} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />}
-    {upload && <StoreUpload onClose={() => setUpload(false)} onDone={(r) => { setUpload(false); setMsg("Loaded " + r.created + " new store" + (r.created === 1 ? "" : "s") + ", updated " + r.updated + "."); load(); }} />}
+    {upload && <StoreUpload onClose={() => setUpload(false)} onDone={(r) => { setUpload(false); setMsg("Loaded " + r.created + " new account" + (r.created === 1 ? "" : "s") + ", updated " + r.updated + ". Next: Team shows the sales reps this list names -- invite them and their picker fills in."); load(); }} />}
   </div>;
 }
 const iconBtn = { background: "none", border: "none", cursor: "pointer", padding: 6, color: TB.slate };
@@ -132,17 +133,24 @@ function StoreForm({ s, teams, onClose, onSaved }) {
   const [f, setF] = useState(s); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (p) => setF((v) => Object.assign({}, v, p));
   async function save(e) { if (e) e.preventDefault(); setBusy(true); setErr(""); const r = await api.post("/api/stores", f); setBusy(false); if (r.error) setErr(r.error); else onSaved(); }
-  return <Modal title={s.id ? "Edit store" : "Add a store"} onClose={onClose} width={520}>
+  return <Modal title={s.id ? "Edit account" : "Add an account"} onClose={onClose} width={560}>
     <form onSubmit={save}>
-      <Field ui={ui} label="Store name"><Input autoFocus value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="Stripes #2134" /></Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Field ui={ui} label="Store #" hint="Optional. Lets a re-upload find it."><Input value={f.storeNo} onChange={(e) => set({ storeNo: e.target.value })} /></Field>
-        <Field ui={ui} label="City"><Input value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
+      <Field ui={ui} label="Account name"><Input autoFocus value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="Stripes #2134" /></Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+        <Field ui={ui} label="Account #" hint="Lets a re-upload find it."><Input value={f.storeNo} onChange={(e) => set({ storeNo: e.target.value })} /></Field>
+        <Field ui={ui} label="Address"><Input value={f.address} onChange={(e) => set({ address: e.target.value })} placeholder="4210 N Grandview Ave" /></Field>
       </div>
-      <Field ui={ui} label="Chain" hint="Every store of a chain prints in that chain's style. Leave blank for an independent."><Input value={f.chain} onChange={(e) => set({ chain: e.target.value })} placeholder="Stripes" /></Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <Field ui={ui} label="City"><Input value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
+        <Field ui={ui} label="Chain" hint="Prints in that chain's style. Blank = independent."><Input value={f.chain} onChange={(e) => set({ chain: e.target.value })} placeholder="Stripes" /></Field>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+        <Field ui={ui} label="Sales rep" hint="Whose picker this account shows in."><Input value={f.repName} onChange={(e) => set({ repName: e.target.value })} placeholder="Jose Esquivel" /></Field>
+        <Field ui={ui} label="Sales rep #"><Input value={f.repNo} onChange={(e) => set({ repNo: e.target.value })} placeholder="21063" /></Field>
+      </div>
       {teams.length > 0 && <Field ui={ui} label="Team"><select value={f.teamId} onChange={(e) => set({ teamId: e.target.value })} style={Object.assign({}, inputStyle(ui))}><option value="">— none —</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>}
       {err && <Notice kind="bad" style={{ marginBottom: 10 }}>{err}</Notice>}
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><Ghost small onClick={onClose}>Cancel</Ghost><Primary small type="submit" disabled={busy || !f.name.trim()}>{busy ? "Saving…" : "Save store"}</Primary></div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><Ghost small onClick={onClose}>Cancel</Ghost><Primary small type="submit" disabled={busy || !f.name.trim()}>{busy ? "Saving…" : "Save account"}</Primary></div>
     </form>
   </Modal>;
 }
@@ -156,19 +164,19 @@ function StoreUpload({ onClose, onDone }) {
     catch (e) { setErr("Couldn't reach the server."); }
     setBusy("");
   }
-  return <Modal title="Upload a store list" onClose={onClose} width={720}>
-    <div style={{ fontSize: 13.5, color: TB.slate, marginBottom: 12, lineHeight: 1.55 }}>Any .xlsx or .csv with a <b>Name</b> (or Store / Account) column. <b>Store #</b>, <b>City</b>, <b>Chain</b> and <b>Team</b> are read when they are there; the header can be on any row. A store already here (same number) is updated, never duplicated.</div>
+  return <Modal title="Upload your account list" onClose={onClose} width={860}>
+    <div style={{ fontSize: 13.5, color: TB.slate, marginBottom: 12, lineHeight: 1.55 }}>Any .xlsx or .csv straight out of your system. Columns read: <b>Account Name</b> (required), <b>Account #</b>, <b>Address</b>, <b>City</b>, <b>Chain</b>, <b>Sales Rep</b>, <b>Sales Rep #</b> (a route number works), <b>Team</b>. Header on any row; extra columns are ignored. An account already here (same number) is updated, never duplicated -- re-upload whenever the list changes.</div>
     <Field ui={ui} label="Spreadsheet"><input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { setFile(e.target.files && e.target.files[0]); setPreview(null); }} style={{ fontSize: 13 }} /></Field>
     {err && <Notice kind="bad" style={{ marginBottom: 10 }}>{err}</Notice>}
     {preview && <div style={{ marginBottom: 12 }}>
-      <Notice kind="ok" style={{ marginBottom: 8 }}>Tab “{preview.sheet}”, header on row {preview.headerRow}. Columns read: {preview.columns.join(", ")}. <b>{preview.count}</b> store{preview.count === 1 ? "" : "s"}.</Notice>
-      <Table cols={["Name", "#", "City", "Chain", "Team"]} rows={preview.sample.map((r, i) => <tr key={i}><td style={td}>{r.name}</td><td style={td}>{r.storeNo || "—"}</td><td style={td}>{r.city}</td><td style={td}>{r.chain}</td><td style={td}>{r.team}</td></tr>)} />
+      <Notice kind={preview.columns.indexOf("repNo") === -1 && preview.columns.indexOf("repName") === -1 ? "warn" : "ok"} style={{ marginBottom: 8 }}>Tab “{preview.sheet}”, header on row {preview.headerRow}. Columns read: {preview.columns.map((c) => ({ name: "Account Name", storeNo: "Account #", address: "Address", city: "City", chain: "Chain", repName: "Sales Rep", repNo: "Sales Rep #", team: "Team" }[c] || c)).join(", ")}. <b>{preview.count}</b> account{preview.count === 1 ? "" : "s"}.{preview.columns.indexOf("repNo") === -1 && preview.columns.indexOf("repName") === -1 ? " No Sales Rep column found -- every rep will see every account until one is added." : ""}</Notice>
+      <Table cols={["Account", "#", "Address", "City", "Chain", "Sales rep", "Rep #"]} rows={preview.sample.map((r, i) => <tr key={i}><td style={td}>{r.name}</td><td style={td}>{r.storeNo || "—"}</td><td style={td}>{r.address}</td><td style={td}>{r.city}</td><td style={td}>{r.chain}</td><td style={td}>{r.repName}</td><td style={td}>{r.repNo || "—"}</td></tr>)} />
       {preview.count > preview.sample.length && <div style={{ fontSize: 12, color: C.mute, marginTop: 4 }}>First {preview.sample.length} shown.</div>}
     </div>}
     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
       <Ghost small onClick={onClose}>Cancel</Ghost>
       {!preview && <Primary small disabled={!!busy || !file} onClick={() => run(false)}>{busy === "preview" ? "Reading…" : "Preview"}</Primary>}
-      {preview && <Primary small disabled={!!busy} onClick={() => run(true)}>{busy === "apply" ? "Loading…" : "Load " + preview.count + " store" + (preview.count === 1 ? "" : "s")}</Primary>}
+      {preview && <Primary small disabled={!!busy} onClick={() => run(true)}>{busy === "apply" ? "Loading…" : "Load " + preview.count + " account" + (preview.count === 1 ? "" : "s")}</Primary>}
     </div>
   </Modal>;
 }
@@ -233,8 +241,11 @@ function CatalogUpload({ onClose, onDone }) {
    ================================================================ */
 export function TeamScreen({ me, role }) {
   const [data, setData] = useState(null); const [teams, setTeams] = useState([]); const [inv, setInv] = useState(false); const [msg, setMsg] = useState(""); const [teamName, setTeamName] = useState("");
+  const [reps, setReps] = useState(null);
   const canAdmin = role === "owner" || role === "admin";
-  function load() { api.get("/api/orgs/" + session.org + "/members").then(setData).catch(() => setData({ error: "Couldn't load the team." })); api.get("/api/orgs/" + session.org + "/teams").then((r) => setTeams((r && r.teams) || [])).catch(() => {}); }
+  function load() { api.get("/api/orgs/" + session.org + "/members").then(setData).catch(() => setData({ error: "Couldn't load the team." })); api.get("/api/orgs/" + session.org + "/teams").then((r) => setTeams((r && r.teams) || [])).catch(() => {}); api.get("/api/orgs/" + session.org + "/reps").then((r) => setReps(r && r.ok ? r : { reps: [], unmatched: [] })).catch(() => setReps({ reps: [], unmatched: [] })); }
+  const repOptions = ((reps && reps.reps) || []).filter((r) => r.repNo);
+  async function setRepNo(m, repNo) { const x = await api.post("/api/orgs/" + session.org + "/members/" + m.id, { repNo }); if (x.error) window.alert(x.error); else load(); }
   useEffect(load, []);
   const members = (data && data.members) || [], invites = (data && data.invites) || [];
   const teamNameOf = (id) => (teams.find((t) => t.id === id) || {}).name || "";
@@ -248,16 +259,25 @@ export function TeamScreen({ me, role }) {
     <PageTitle title="Team" sub="Reps ask for tags for their stores and see their own requests. Managers work their team's queue and print. Admins set everything up." right={canAdmin && <Primary small onClick={() => setInv(true)}><L.Mail size={15} /> Invite someone</Primary>} />
     {msg && <Notice kind="ok" style={{ marginBottom: 12 }}>{msg}</Notice>}
     {data && data.error && <Notice kind="bad" style={{ marginBottom: 12 }}>{data.error}</Notice>}
-    <Table cols={["Name", "Email", "Role", "Team", "Last seen", canAdmin ? "" : null].filter((x) => x != null)} rows={members.map((m) => <tr key={m.id}>
+    {reps && reps.unmatched && reps.unmatched.length > 0 && canAdmin && <div style={{ background: "#fff", border: `1.5px solid ${TB.signal}`, borderRadius: 14, padding: 14, marginBottom: 14 }}>
+      <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 15, color: TB.ink }}>Your account list names {reps.unmatched.length} sales rep{reps.unmatched.length === 1 ? "" : "s"} not on the team yet</div>
+      <div style={{ fontSize: 13, color: TB.slate, marginTop: 3, marginBottom: 10, lineHeight: 1.5 }}>Invite each one and their Rep # rides along -- the moment they accept, their picker shows their own accounts and nobody else's.</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{reps.unmatched.map((r, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: "8px 12px", background: TB.paper }}>
+        <div><div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 13.5, color: TB.ink }}>{r.repName || "Rep #" + r.repNo}</div><div style={{ fontSize: 12, color: TB.slate }}>{r.repNo ? "#" + r.repNo + " · " : ""}{r.accounts} account{r.accounts === 1 ? "" : "s"}</div></div>
+        <Primary small onClick={() => setInv({ repNo: r.repNo || "", repName: r.repName || "" })}><L.Mail size={14} /> Invite</Primary>
+      </div>)}</div>
+    </div>}
+    <Table cols={["Name", "Email", "Role", "Rep #", "Team", "Last seen", canAdmin ? "" : null].filter((x) => x != null)} rows={members.map((m) => <tr key={m.id}>
       <td style={td}><b>{m.name}</b>{m.id === me.id && <span style={{ color: C.mute, fontSize: 12 }}> (you)</span>}</td><td style={Object.assign({ color: TB.slate }, td)}>{m.email}</td>
       <td style={td}>{canAdmin && m.role !== "owner" ? sel(m.role, [["admin", "Admin"], ["manager", "Manager"], ["rep", "Rep"]].concat(role === "owner" ? [["owner", "Owner (transfer)"]] : []), (v) => setRole(m, v)) : <Chip ui={ui} small bg={m.role === "owner" ? TB.signalSoft : C.lineCool}>{roleLabel(m.role)}</Chip>}</td>
+      <td style={td}>{canAdmin ? <RepNoPicker value={m.repNo} options={repOptions} onPick={(v) => setRepNo(m, v)} /> : (m.repNo ? "#" + m.repNo : <span style={{ color: C.mute }}>—</span>)}</td>
       <td style={td}>{canAdmin ? sel(m.teamId, [["", "—"]].concat(teams.map((t) => [t.id, t.name])), (v) => setTeam(m, v)) : (teamNameOf(m.teamId) || "—")}</td>
       <td style={Object.assign({ color: C.mute, fontSize: 12.5 }, td)}>{m.lastLoginAt ? ago(m.lastLoginAt) : "never"}</td>
       {canAdmin && <td style={Object.assign({ textAlign: "right" }, td)}>{m.role !== "owner" && m.id !== me.id && <button onClick={() => remove(m)} style={iconBtn} title="Remove"><L.Trash2 size={15} /></button>}</td>}
     </tr>)} />
     {invites.length > 0 && <div style={{ marginTop: 18 }}>
       <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 13, letterSpacing: 0.5, textTransform: "uppercase", color: TB.slate, marginBottom: 8 }}>Invited, not yet joined</div>
-      <Table cols={["Email", "Role", "Sent", ""]} rows={invites.map((i) => <tr key={i.id}><td style={td}>{i.email}</td><td style={td}>{roleLabel(i.role)}</td><td style={Object.assign({ color: C.mute }, td)}>{ago(i.createdAt)}</td><td style={Object.assign({ textAlign: "right" }, td)}>{canAdmin && <button onClick={() => revoke(i)} style={{ background: "none", border: "none", color: TB.pull, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>Revoke</button>}</td></tr>)} />
+      <Table cols={["Email", "Role", "Rep #", "Sent", ""]} rows={invites.map((i) => <tr key={i.id}><td style={td}>{i.email}</td><td style={td}>{roleLabel(i.role)}</td><td style={Object.assign({ color: C.mute }, td)}>{i.repNo ? "#" + i.repNo : "—"}</td><td style={Object.assign({ color: C.mute }, td)}>{ago(i.createdAt)}</td><td style={Object.assign({ textAlign: "right" }, td)}>{canAdmin && <button onClick={() => revoke(i)} style={{ background: "none", border: "none", color: TB.pull, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>Revoke</button>}</td></tr>)} />
     </div>}
     {canAdmin && <div style={{ marginTop: 22, background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
       <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 15, color: TB.ink }}>Teams <span style={{ fontWeight: 500, color: TB.slate, fontSize: 13 }}>· optional</span></div>
@@ -265,11 +285,24 @@ export function TeamScreen({ me, role }) {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>{teams.map((t) => <Chip key={t.id} ui={ui} bg={C.lineCool}>{t.name}</Chip>)}{!teams.length && <span style={{ fontSize: 12.5, color: C.mute }}>No teams yet.</span>}</div>
       <form onSubmit={addTeam} style={{ display: "flex", gap: 8, maxWidth: 420 }}><Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="North route" /><Ghost small type="submit" disabled={!teamName.trim()}>Add team</Ghost></form>
     </div>}
-    {inv && <InviteForm teams={teams} onClose={() => setInv(false)} onSent={(email) => { setInv(false); setMsg("Invite sent to " + email + ". They get a link that sets their password and lands them here."); load(); }} />}
+    {inv && <InviteForm teams={teams} reps={repOptions} preset={typeof inv === "object" ? inv : null} onClose={() => setInv(false)} onSent={(email) => { setInv(false); setMsg("Invite sent to " + email + ". They get a link that sets their password and lands them here."); load(); }} />}
   </div>;
 }
-function InviteForm({ teams, onClose, onSent }) {
-  const [f, setF] = useState({ email: "", role: "rep", teamId: "" }); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+// A member's Rep #: pick one of the numbers the account list carries, or
+// type one. What links a login to "their" accounts.
+function RepNoPicker({ value, options, onPick }) {
+  const [typing, setTyping] = useState(false); const [v, setV] = useState(value || "");
+  const known = (options || []).some((o) => o.repNo === value);
+  if (typing || (value && !known && !options.length)) return <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={() => { setTyping(false); if (v !== (value || "")) onPick(v); }} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} placeholder="21063" style={{ width: 90, padding: "6px 8px", borderRadius: 8, border: `1.5px solid ${C.line}`, fontSize: 13, fontFamily: BODY }} />;
+  return <select value={known ? value : (value ? "__custom" : "")} onChange={(e) => { if (e.target.value === "__type") { setV(value || ""); setTyping(true); } else onPick(e.target.value); }} style={{ padding: "6px 8px", borderRadius: 8, border: `1.5px solid ${C.line}`, background: "#fff", fontSize: 13, fontFamily: BODY, maxWidth: 200 }}>
+    <option value="">—</option>
+    {(options || []).map((o) => <option key={o.repNo} value={o.repNo}>#{o.repNo}{o.repName ? " · " + o.repName : ""} ({o.accounts})</option>)}
+    {value && !known && <option value="__custom">#{value}</option>}
+    <option value="__type">Type a number…</option>
+  </select>;
+}
+function InviteForm({ teams, reps, preset, onClose, onSent }) {
+  const [f, setF] = useState({ email: "", role: "rep", teamId: "", repNo: (preset && preset.repNo) || "" }); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (p) => setF((v) => Object.assign({}, v, p));
   async function send(e) { e.preventDefault(); setBusy(true); setErr(""); const r = await api.post("/api/orgs/" + session.org + "/invite", f); setBusy(false); if (r.error) setErr(r.error); else onSent(f.email); }
   const Opt = ({ id, label, sub }) => <button type="button" onClick={() => set({ role: id })} style={{ textAlign: "left", padding: "10px 12px", borderRadius: 12, border: `2px solid ${f.role === id ? TB.signal : C.line}`, background: f.role === id ? TB.signalSoft : "#fff", cursor: "pointer" }}><div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 14, color: TB.ink }}>{label}</div><div style={{ fontSize: 12, color: TB.slate }}>{sub}</div></button>;
@@ -281,6 +314,10 @@ function InviteForm({ teams, onClose, onSent }) {
         <Opt id="manager" label="Manager" sub="Works the queue and prints batches for their team. Read-only on styles." />
         <Opt id="admin" label="Admin" sub="Everything: styles, materials, stores, the item list, the team." />
       </div>
+      {f.role === "rep" && <Field ui={ui} label="Sales rep #" hint={preset && preset.repName ? "The account list calls this rep " + preset.repName + "." : "Which accounts are theirs. From your account list's Sales Rep # column; leave blank and they see every account."}>
+        {(reps || []).length ? <select value={f.repNo} onChange={(e) => set({ repNo: e.target.value })} style={inputStyle(ui)}><option value="">— not yet —</option>{reps.map((o) => <option key={o.repNo} value={o.repNo}>#{o.repNo}{o.repName ? " · " + o.repName : ""} · {o.accounts} account{o.accounts === 1 ? "" : "s"}</option>)}</select>
+          : <Input value={f.repNo} onChange={(e) => set({ repNo: e.target.value })} placeholder="21063" />}
+      </Field>}
       {teams.length > 0 && <Field ui={ui} label="Team"><select value={f.teamId} onChange={(e) => set({ teamId: e.target.value })} style={inputStyle(ui)}><option value="">— none —</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>}
       {err && <Notice kind="bad" style={{ marginBottom: 10 }}>{err}</Notice>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><Ghost small onClick={onClose}>Cancel</Ghost><Primary small type="submit" disabled={busy || !f.email}>{busy ? "Sending…" : "Send invite"}</Primary></div>

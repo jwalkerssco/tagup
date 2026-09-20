@@ -107,7 +107,8 @@ async function main() {
     await step("materials", () => goto(c, auth("/app/materials"), D[0], D[1]));
     await step("brands", () => goto(c, auth("/app/brands"), D[0], 1000));
     await step("stores", () => goto(c, auth("/app/stores"), D[0], D[1]));
-    await step("stores-upload", async () => { await click(c, "Upload a list"); await sleep(400); });
+    await step("stores-edit", async () => { await click(c, "Stripes #2134"); await sleep(200); const pos = await c.eval("(function(){const tr=Array.from(document.querySelectorAll(\"tr\")).find(t=>t.textContent.includes(\"Stripes #2134\")); const b=tr&&tr.querySelector(\"button\"); if(!b) return null; b.click(); return true; })()"); await sleep(500); });
+    await step("stores-upload", async () => { await click(c, "Upload account list"); await sleep(400); });
     await step("catalog", () => goto(c, auth("/app/catalog"), D[0], D[1]));
     await step("team", () => goto(c, auth("/app/team"), D[0], D[1]));
     await step("team-invite", async () => { await click(c, "Invite someone"); await sleep(400); });

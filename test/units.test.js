@@ -116,9 +116,16 @@ t("parseCatalog needs a Name column plus one more, and says so", () => {
 
 /* ---------------- store sheet ---------------- */
 t("parseStoreSheet reads Store/Store #/City/Chain/Team with synonyms and skips blank names", () => {
-  const r = parseStoreSheet([{ name: "Accounts", rows: [["Customer", "Account #", "Town", "Banner", "Route"], ["Stripes #2134", 2134, "Odessa", "Stripes", "West"], ["", 1, "x", "y", "z"], ["Hops Scotch", "", "Odessa", "", ""]] }]);
+  const r = parseStoreSheet([{ name: "Accounts", rows: [["Customer", "Account #", "Town", "Banner", "Territory"], ["Stripes #2134", 2134, "Odessa", "Stripes", "West"], ["", 1, "x", "y", "z"], ["Hops Scotch", "", "Odessa", "", ""]] }]);
   ok(r.ok); eq(r.columns, ["name", "storeNo", "city", "chain", "team"]);
-  eq(r.rows.length, 2); eq(r.rows[0], { name: "Stripes #2134", storeNo: "02134", city: "Odessa", chain: "Stripes", team: "West" }); eq(r.rows[1].storeNo, null);
+  eq(r.rows.length, 2); eq(r.rows[0], { name: "Stripes #2134", storeNo: "02134", address: "", city: "Odessa", chain: "Stripes", repName: "", repNo: null, team: "West" }); eq(r.rows[1].storeNo, null);
+});
+t("parseStoreSheet reads Address, Sales Rep and Sales Rep # (a route number, even from a numeric cell) with the header under a title row", () => {
+  const r = parseStoreSheet([{ name: "Accounts", rows: [["Retail Accounts -- Odessa"], [], ["Account Name", "Account #", "Address", "City", "Sales Rep", "Sales Rep #"], ["Stripes #2134", 2134, "4210 N Grandview Ave", "Odessa", "Jose Esquivel", 21063], ["Hops Scotch", "", "4330 E 52nd St", "Odessa", "", ""]] }]);
+  ok(r.ok); eq(r.headerRow, 3); eq(r.columns, ["name", "storeNo", "address", "city", "repName", "repNo"]);
+  eq(r.rows[0].address, "4210 N Grandview Ave"); eq(r.rows[0].repName, "Jose Esquivel"); eq(r.rows[0].repNo, "21063", "numeric rep # comes back as a clean string"); eq(r.rows[1].repNo, null);
+  const alt = parseStoreSheet([{ name: "s", rows: [["Customer", "Route", "Salesman", "Street"], ["A", "21063.0", "J E", "1 Main"]] }]);
+  eq(alt.rows[0], { name: "A", storeNo: null, address: "1 Main", city: "", chain: "", repName: "J E", repNo: "21063", team: "" }, "Route -> rep #, Salesman -> rep, Street -> address, and 21063.0 -> 21063");
 });
 t("parseStoreSheet refuses a sheet with no name column", () => {
   const r = parseStoreSheet([{ name: "s", rows: [["City", "Chain"], ["Odessa", "Stripes"]] }]);

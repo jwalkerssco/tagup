@@ -105,6 +105,7 @@ function RepScreen({ ui, me, onBack, standalone }) {
   const [step, setStep] = useState("list");          // list | account | type | item | price | review | done
   const [f, setF] = useState(BLANK);
   const [accounts, setAccounts] = useState(null);
+  const [scopeNote, setScopeNote] = useState("");
   const [styles, setStyles] = useState([]);
   const [mine, setMine] = useState(null);
   const [pendingTable, setPendingTable] = useState(false);
@@ -116,7 +117,7 @@ function RepScreen({ ui, me, onBack, standalone }) {
   function loadMine() { jget(ui, "/api/requests?status=all&limit=60").then((r) => { setMine((r && r.requests) || []); setPendingTable(!!(r && r.pending)); }).catch(() => setMine([])); }
   useEffect(() => {
     loadMine();
-    jget(ui, "/api/stores?styles=1").then((r) => setAccounts((r && r.stores) || [])).catch(() => setAccounts([]));
+    jget(ui, "/api/stores?styles=1").then((r) => { setAccounts((r && r.stores) || []); setScopeNote(r && r.scope === "all" && r.scopeReason && r.scopeReason !== "no-reps-on-list" ? (r.scopeReason === "rep-no-unmatched" ? "Your Rep # does not match any account on the list yet, so every store is shown. Ask your admin to check it under Team." : "The account list does not name you yet, so every store is shown. Ask your admin to set your Rep # under Team.") : ""); }).catch(() => setAccounts([]));
     jget(ui, "/api/setup").then((r) => setStyles((r && r.styles) || [])).catch(() => {});
   }, []);
 
@@ -200,20 +201,21 @@ function RepScreen({ ui, me, onBack, standalone }) {
 
   /* ---- account ---- */
   if (step === "account") {
-    const list = (accounts || []).filter((a) => !q || (a.name + " " + a.city + " " + a.chainLabel).toLowerCase().includes(q.toLowerCase()));
+    const list = (accounts || []).filter((a) => !q || (a.name + " " + (a.storeNo || "") + " " + (a.address || "") + " " + a.city + " " + a.chainLabel).toLowerCase().includes(q.toLowerCase()));
     return <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.paper }}>
-      <Header title="WHICH STORE?" sub="The chain's tag style follows the store." back={() => setStep("list")} />
+      <Header title="WHICH ACCOUNT?" sub="The chain's tag style follows the account." back={() => setStep("list")} />
       {wrap(<>
         <Steps />
         <div style={{ position: "relative", marginBottom: 12 }}>
           <span style={{ position: "absolute", left: 12, top: 13 }}><Icon ui={ui} name="Search" size={18} color={C.mute} /></span>
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your route" style={Object.assign(inputStyle(ui), { paddingLeft: 38 })} />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your accounts" style={Object.assign(inputStyle(ui), { paddingLeft: 38 })} />
         </div>
+        {scopeNote && <div style={{ background: TB.signalSoft, color: "#8A3A08", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10, lineHeight: 1.45 }}>{scopeNote}</div>}
         {accounts === null && <div style={{ color: C.sub, fontSize: 13 }}>Loading your route…</div>}
         {accounts && !accounts.length && <Card ui={ui}><div style={{ fontSize: 13, color: C.sub }}>No stores yet. An owner or admin adds them under Stores — one at a time or from a spreadsheet.</div></Card>}
         {list.slice(0, 80).map((a) => (
           <button key={a.id} onClick={() => pickAccount(a)} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", marginBottom: 8, borderRadius: 14, border: `2px solid ${C.line}`, background: "#fff", cursor: "pointer", fontFamily: ui.BODY }}>
-            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700, color: C.ink, fontSize: 15 }}>{a.name}</div><div style={{ fontSize: 12, color: C.sub }}>{a.city}{a.city ? " · " : ""}{a.storeNo ? '#' + a.storeNo : ''}</div></div>
+            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700, color: C.ink, fontSize: 15 }}>{a.name}</div><div style={{ fontSize: 12, color: C.sub }}>{[a.address, a.city].filter(Boolean).join(", ")}{(a.address || a.city) && a.storeNo ? " · " : ""}{a.storeNo ? '#' + a.storeNo : ''}</div></div>
             <Chip ui={ui} small bg={a.chainId ? C.goldSoft : C.lineCool}>{a.chainLabel || "Independent"}</Chip>
             <Icon ui={ui} name="ChevronRight" size={18} color={C.mute} />
           </button>
