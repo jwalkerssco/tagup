@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ---------------- accounts ----------------
 
-CREATE TABLE orgs (
+CREATE TABLE IF NOT EXISTS orgs (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   slug          text UNIQUE NOT NULL,          -- yourorg.tagup.app, and the signup handle
   name          text NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE orgs (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email          text UNIQUE NOT NULL,
   password_hash  text NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE users (
 
 -- A user can belong to more than one org (an agency signing tags for two
 -- clients, a rep who moves companies) -- role is per membership, not per user.
-CREATE TABLE org_members (
+CREATE TABLE IF NOT EXISTS org_members (
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role       text NOT NULL CHECK (role IN ('owner','admin','manager','rep')),
@@ -42,7 +42,7 @@ CREATE TABLE org_members (
   PRIMARY KEY (org_id, user_id)
 );
 
-CREATE TABLE org_invites (
+CREATE TABLE IF NOT EXISTS org_invites (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   email      text NOT NULL,
@@ -57,12 +57,14 @@ CREATE TABLE org_invites (
 
 -- Teams replace "branch": an org's own locations/regions. A team is optional
 -- -- a small org with one location never needs to create one.
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   name       text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE org_members DROP CONSTRAINT IF EXISTS org_members_team_fk;
+ALTER TABLE org_members DROP CONSTRAINT IF EXISTS org_members_team_fk;
 ALTER TABLE org_members ADD CONSTRAINT org_members_team_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL;
 
 -- ---------------- stores ----------------
@@ -70,7 +72,7 @@ ALTER TABLE org_members ADD CONSTRAINT org_members_team_fk FOREIGN KEY (team_id)
 -- in, not borrowed from a parent app's account universe. chain is a free
 -- string the org types (or a chain row it picked), same "raw spelling"
 -- looseness the embedded version had, resolved through chain_aliases below.
-CREATE TABLE stores (
+CREATE TABLE IF NOT EXISTS stores (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   team_id    uuid REFERENCES teams(id) ON DELETE SET NULL,
@@ -83,8 +85,8 @@ CREATE TABLE stores (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX stores_org_idx ON stores (org_id, active);
-CREATE UNIQUE INDEX stores_org_storeno_uq ON stores (org_id, store_no) WHERE store_no IS NOT NULL;
+CREATE INDEX IF NOT EXISTS stores_org_idx ON stores (org_id, active);
+CREATE UNIQUE INDEX IF NOT EXISTS stores_org_storeno_uq ON stores (org_id, store_no) WHERE store_no IS NOT NULL;
 
 -- ---------------- chains (global, cross-tenant) ----------------
 -- Retail chain identity is not private to one org -- "Stripes" means the
@@ -93,7 +95,7 @@ CREATE UNIQUE INDEX stores_org_storeno_uq ON stores (org_id, store_no) WHERE sto
 -- already resolved benefit every new signup. An org's OWN style for a
 -- chain stays private (tagup_styles.org_id); the chain identity and its
 -- spelling aliases are shared.
-CREATE TABLE chains (
+CREATE TABLE IF NOT EXISTS chains (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   slug       text UNIQUE NOT NULL,
   label      text NOT NULL,
@@ -108,7 +110,7 @@ CREATE TABLE chains (
 -- everyone as more orgs use the product -- the harder Tagify would be to
 -- catch up to the more this fills in. An org may still override with its
 -- own upload (brand_overrides), same escape hatch tagup always had.
-CREATE TABLE brands (
+CREATE TABLE IF NOT EXISTS brands (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_key   text UNIQUE NOT NULL,
   label       text NOT NULL,
@@ -124,7 +126,7 @@ CREATE TABLE brands (
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE brand_overrides (
+CREATE TABLE IF NOT EXISTS brand_overrides (
   org_id    uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   brand_id  uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
   logo_key  text NOT NULL,
@@ -135,7 +137,7 @@ CREATE TABLE brand_overrides (
 -- An org's own price file / product list, the thing import matches
 -- against. Optional -- an org with no catalog still imports, every row
 -- just carries item_free_text.
-CREATE TABLE catalog_items (
+CREATE TABLE IF NOT EXISTS catalog_items (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   item_no    text,
@@ -145,10 +147,10 @@ CREATE TABLE catalog_items (
   active     boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX catalog_items_org_idx ON catalog_items (org_id, active);
+CREATE INDEX IF NOT EXISTS catalog_items_org_idx ON catalog_items (org_id, active);
 
 -- ---------------- styles / materials (per org, format + kind axes unchanged) ----------------
-CREATE TABLE tagup_styles (
+CREATE TABLE IF NOT EXISTS tagup_styles (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id       uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   chain_id     uuid REFERENCES chains(id),       -- NULL = this org's Independent/default style
@@ -167,9 +169,9 @@ CREATE TABLE tagup_styles (
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX tagup_styles_org_chain_fmt_uq ON tagup_styles (org_id, chain_id, format) WHERE chain_id IS NOT NULL AND active;
+CREATE UNIQUE INDEX IF NOT EXISTS tagup_styles_org_chain_fmt_uq ON tagup_styles (org_id, chain_id, format) WHERE chain_id IS NOT NULL AND active;
 
-CREATE TABLE tagup_materials (
+CREATE TABLE IF NOT EXISTS tagup_materials (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   name       text NOT NULL,
@@ -185,7 +187,7 @@ CREATE TABLE tagup_materials (
 );
 
 -- ---------------- requests / batches / imports (per org) ----------------
-CREATE TABLE tagup_requests (
+CREATE TABLE IF NOT EXISTS tagup_requests (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id            uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   user_id           uuid NOT NULL REFERENCES users(id),
@@ -218,9 +220,9 @@ CREATE TABLE tagup_requests (
   updated_at        timestamptz NOT NULL DEFAULT now(),
   printed_at        timestamptz
 );
-CREATE INDEX tagup_requests_org_queue_idx ON tagup_requests (org_id, status, created_at);
+CREATE INDEX IF NOT EXISTS tagup_requests_org_queue_idx ON tagup_requests (org_id, status, created_at);
 
-CREATE TABLE tagup_batches (
+CREATE TABLE IF NOT EXISTS tagup_batches (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id          uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   material_id     uuid NOT NULL REFERENCES tagup_materials(id),
@@ -232,7 +234,7 @@ CREATE TABLE tagup_batches (
   printed_at      timestamptz
 );
 
-CREATE TABLE tagup_imports (
+CREATE TABLE IF NOT EXISTS tagup_imports (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   file_name  text,
@@ -247,7 +249,7 @@ CREATE TABLE tagup_imports (
 -- ---------------- binary assets ----------------
 -- One table for every uploaded/found image (chain logos, brand logos,
 -- template artwork), namespaced the way the embedded kv rows were.
-CREATE TABLE assets (
+CREATE TABLE IF NOT EXISTS assets (
   id         text PRIMARY KEY,          -- ns_<random>, the credential
   ns         text NOT NULL,             -- ttpl | blogo | clogo
   mime       text NOT NULL,
@@ -260,7 +262,7 @@ CREATE TABLE assets (
 -- Drives the guided first-run: which steps an org has completed, so the
 -- empty-state wizard knows what to show next and a returning admin who
 -- finished onboarding never sees it again.
-CREATE TABLE org_onboarding (
+CREATE TABLE IF NOT EXISTS org_onboarding (
   org_id       uuid PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
   added_store  boolean NOT NULL DEFAULT false,
   picked_style boolean NOT NULL DEFAULT false,

@@ -22,7 +22,7 @@ const app = createApp(pool, {
 // Static frontend. app.listen fires immediately regardless of DB state,
 // same rule the embedded product's Cloud Run healthcheck depends on.
 app.use(express.static(path.join(__dirname, "public")));
-app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.use((req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("tagup listening on " + PORT));

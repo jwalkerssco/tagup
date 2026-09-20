@@ -3,23 +3,36 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node dev.js --seed",
+    "build": "node build.js",
+    "watch": "node build.js --watch",
+    "migrate": "node migrate.js",
+    "test": "node test/units.test.js && node test/integration.test.js",
+    "shots": "node scripts/shots.js dev.log"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Prices today. On shelf tomorrow. Price tag requests for beverage distributors.",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.47.0",
     "multer": "^2.4.0",
     "pg": "^8.23.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "pg-mem": "^3.0.14"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
