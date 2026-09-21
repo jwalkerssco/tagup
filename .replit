@@ -1,0 +1,16 @@
+
+# Replit config, committed so a `git reset --hard origin/main` on the Repl
+# never loses the run command again (2026-09-20: it did, and Republish
+# reported "Could not find run command"). index.js builds the bundle and
+# applies the schema itself, so the run command is the whole deploy.
+run = "node index.js"
+entrypoint = "index.js"
+modules = ["nodejs-22"]
+
+[deployment]
+run = ["node", "index.js"]
+deploymentTarget = "autoscale"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
