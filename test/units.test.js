@@ -113,9 +113,13 @@ t("template field fill: a hex fill is kept, anything else dropped, and the rende
 t("modern layout: logo circle, price with raised cents, package pill in the accent; falls back to the chain initial; 2-for reads whole", () => {
   const st = { id: "s", name: "DK", kind: "composed", theme: CORE.themeMerge({ layout: "modern", accent: "#1D4ED8", accentFg: "#FFFFFF" }) };
   const h = CORE.renderTag({ contentType: "standard_price", itemName: "Michelob Ultra", packageSize: "4pk 16oz Cans", price: 4.99, chainLabel: "DK" }, st, { tagW: 3.667, tagH: 1.417 });
-  ok(/class="tag modern"/.test(h)); ok(/mlogo mini" style="background:#1D4ED8;color:#FFFFFF">D</.test(h), "chain initial when no logo"); ok(/<span class="whole">4<\/span><span class="cents">99/.test(h)); ok(/mpill" style="background:#1D4ED8;color:#FFFFFF">4pk 16oz Cans/.test(h));
+  ok(/class="tag modern"/.test(h)); ok(/mlogo mini" style="background:#1D4ED8;color:#FFFFFF">D</.test(h), "chain initial when no logo"); ok(/<span class="whole">4<\/span><span class="cents">99/.test(h)); ok(/mpill" style="background:#333333">4pk 16oz Cans/.test(h), "pill is the pill colour, not the accent");
   const withLogo = CORE.renderTag({ contentType: "standard_price", itemName: "Bud Light", price: 5, multiBuyQty: 2, brandLogoKey: "bl_1" }, st, { tagW: 3.667, tagH: 1.417 });
   ok(/mlogo"><img src="\/api\/assets\/blogo\/bl_1"/.test(withLogo), "brand logo fills the circle"); ok(/class="multi">2\/\$5\.00</.test(withLogo));
+  const same = CORE.renderTag({ contentType: "standard_price", itemName: "Bud Light", price: 4.99, brandLogoKey: "bl_1", brandLabel: "Bud Light", packageSize: "6pk" }, st, { tagW: 3.667, tagH: 1.417 });
+  ok(!/class="mitem"/.test(same), "sameAsBrand: no item line when the logo names the product"); ok(/mpill" style="background:#333333"/.test(same), "pill is dark grey by default, not the accent");
+  const variant = CORE.renderTag({ contentType: "standard_price", itemName: "Bud Light Chelada Fuego", price: 4.99, brandLogoKey: "bl_1", brandLabel: "Bud Light", packageSize: "6pk" }, st, { tagW: 3.667, tagH: 1.417 });
+  ok(/class="mitem">Bud Light Chelada Fuego/.test(variant), "a variant keeps its item line");
   ok(CORE.LAYOUTS.some((l) => l.id === "modern")); ok(CORE.MATERIAL_PRESETS.some((p) => p.cols === 3 && p.rows === 6 && p.sheetW === 11));
 });
 

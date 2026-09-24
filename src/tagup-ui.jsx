@@ -953,10 +953,10 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
               <Color k="accent" label="Band / accent" /><Color k="accentFg" label="Text on band" />
               <Color k="bg" label="Tag background" /><Color k="fg" label="Tag text" />
               <Color k="priceColor" label="Price" /><Color k="promoColor" label="Promo accent" />
-              <Color k="dropColor" label="Price-drop accent" />
+              <Color k="dropColor" label="Price-drop accent" /><Color k="pillColor" label="Package pill (Modern)" />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-              <Toggle k="showLogo" label="Show logo" /><Toggle k="showSize" label="Show package size" /><Toggle k="showWas" label="Show was-price" /><Toggle k="showItemNo" label="Show item #" />
+              <Toggle k="showLogo" label="Show logo" /><Toggle k="showItem" label="Item name (Modern)" /><Toggle k="showSize" label="Show package size" /><Toggle k="showWas" label="Show was-price" /><Toggle k="showItemNo" label="Show item #" />
             </div>
             <Field ui={ui} label="Standing caption" hint="Prints on every standard-price tag, e.g. EVERYDAY LOW PRICE."><input value={th.caption} onChange={(e) => setT({ caption: e.target.value })} style={inputStyle(ui)} /></Field>
             <Field ui={ui} label="Logo" hint="PNG with a transparent background looks best. Replaces the chain name in the band.">
