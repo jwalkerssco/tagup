@@ -109,6 +109,22 @@ t("parseCatalog finds the header anywhere, maps synonyms, pads a numeric item nu
   ok(r.ok); eq(r.sheet, "Price File"); eq(r.headerRow, 3); eq(r.columns, ["itemNo", "name", "brand", "pack"]);
   eq(r.items.length, 2); eq(r.items[0].itemNo, "00023", "numeric cell padded to 5"); eq(r.items[1].itemNo, "A1234", "string kept verbatim"); eq(r.items[1].brand, null);
 });
+t("parseCatalog reads VIP's item export: 'Nme' is the name, 'Product Classes' is ignored, the pack comes off the name", () => {
+  const r = CAT.parseCatalog([{ name: "Sheet0", rows: [["Brand", "Nme", "Item Number", "Product Classes", ""], ["Michelob Ultra", "Ultra 1x30 12oz Can", "18030", "Beer", ""], ["Michelob Ultra", "Ultra 4x6 12oz Btl", "18036", "Beer", ""], ["Modelo", "Modelo Especial 24oz Can", "10401", "Beer", ""], ["Stella", "Stella Artois 1/2 Bbl Keg", "10399", "Beer", ""]] }]);
+  ok(r.ok, r.error); eq(r.columns.sort(), ["brand", "itemNo", "name"]); eq(r.nameHeader, null, "Nme is a known synonym, not a guess"); ok(r.packDerived);
+  eq(r.items[0], { itemNo: "18030", name: "Michelob Ultra", brand: "Michelob Ultra", pack: "1x30 12oz Can" }, "the name fragment 'Ultra' is inside the brand, so the brand prints");
+  eq(r.items[2].name, "Modelo Especial"); eq(r.items[2].pack, "24oz Can"); eq(r.items[3].pack, "1/2 Bbl Keg"); eq(r.items[3].name, "Stella Artois");
+  eq(CAT.derivePack("Bud Lt 24pk 12oz Cn"), "24pk 12oz Cn"); eq(CAT.derivePack("Cutwater Lime Marg 4PK 12OZ CN"), "4PK 12OZ CN"); eq(CAT.derivePack("Just A Brand"), "");
+  eq(CAT.derivePack("Hoop Tea Original 2x12oz Can"), "2x12oz Can"); eq(CAT.derivePack("Clubtails Suny Marg2x12 12z C"), "2x12 12z C"); eq(CAT.derivePack("Stella Artois 13.2 Gallon Keg"), "13.2 Gallon Keg"); eq(CAT.derivePack("Jarritos Sidral Mun1x8 1.5LBt"), "1x8 1.5LBt");
+  const g = CAT.parseCatalog([{ name: "s", rows: [["Brand", "Descr", "Item Number"], ["Modelo", "Modelo Negra 12pk Btl", "1"]] }]);
+  eq(g.nameHeader, "Descr", "an unknown header beside Brand + Item Number is taken as the name"); eq(g.items[0].name, "Modelo Negra"); eq(g.items[0].pack, "12pk Btl");
+  // an explicit package column always wins over the derived one
+  const r2 = CAT.parseCatalog([{ name: "s", rows: [["Item #", "Name", "Package"], ["1", "Ultra 1x30 12oz Can", "30pk Cans"]] }]);
+  eq(r2.items[0].pack, "30pk Cans"); ok(!r2.packDerived);
+  // two unmapped text columns = ambiguous, no guess
+  const r3 = CAT.parseCatalog([{ name: "s", rows: [["Brand", "Foo", "Bar"], ["A", "x", "y"]] }]);
+  ok(r3.error);
+});
 t("parseCatalog needs a Name column plus one more, and says so", () => {
   const r = CAT.parseCatalog([{ name: "s", rows: [["Price", "Cost"], [1, 2]] }]);
   ok(r.error && /Name/.test(r.error)); eq(r.sheets, ["s"]);
