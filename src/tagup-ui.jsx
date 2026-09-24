@@ -1079,6 +1079,21 @@ function BrandsPanel({ ui }) {
     } catch (e) { setMsg("Couldn't reach the server."); }
     setBusy("");
   }
+  // The supplier's asset library, dropped in whole: filenames name the brands.
+  async function bulkUpload(e) {
+    const files = Array.from(e.target.files || []); e.target.value = "";
+    if (!files.length) return;
+    setBusy("upload"); setMsg("");
+    try {
+      const fd = new FormData(); files.forEach((f) => fd.append("files", f, f.name));
+      const h = ui.H(); delete h["Content-Type"];
+      const r = await fetch("/api/brands/upload", { method: "POST", headers: h, body: fd }).then(j);
+      if (r && r.error) setMsg(r.error);
+      else setMsg(`Uploaded ${r.matched.length} logo${r.matched.length === 1 ? "" : "s"}${r.matched.length ? ": " + r.matched.slice(0, 8).map((m) => m.brand).join(", ") + (r.matched.length > 8 ? "…" : "") : ""}.` + (r.unmatched.length ? ` ${r.unmatched.length} file${r.unmatched.length === 1 ? "" : "s"} named no brand here: ${r.unmatched.slice(0, 6).join(", ")}${r.unmatched.length > 6 ? "…" : ""} -- rename to the brand, or Recognize first so the brand exists.` : "") + (r.failed.length ? ` ${r.failed.length} failed (${r.failed[0].why}).` : ""));
+      load();
+    } catch (ex) { setMsg("Couldn't reach the server."); }
+    setBusy("");
+  }
   async function act(b, action, body) {
     const r = await jpost(ui, "/api/brands/" + encodeURIComponent(b.key) + "/" + action, body || {});
     if (r && r.error) window.alert(r.error); else load();
@@ -1101,6 +1116,9 @@ function BrandsPanel({ ui }) {
       <Btn ui={ui} kind="navy" small disabled={!!busy} onClick={() => run("recognize", "/api/brands/recognize", { fromCatalog: true })}>{busy === "recognize" ? "Recognizing…" : "1 · Recognize brands"}</Btn>
       <Btn ui={ui} kind="navy" small disabled={!!busy} onClick={() => run("find", "/api/brands/find", { limit: 15 })}>{busy === "find" ? "Searching…" : "2 · Find logos (15 at a time)"}</Btn>
       <Btn ui={ui} kind="gold" small disabled={!!busy || !counts.found} onClick={() => { if (window.confirm("Approve every found logo the AI rated 90% or better?")) run("approve-confident", "/api/brands/approve-confident", { min: 0.9 }); }}>3 · Approve all ≥ 90%</Btn>
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 9, border: `2px solid ${C.navy}`, fontFamily: ui.HEAD, fontWeight: 700, fontSize: 12, textTransform: "uppercase", color: C.navy, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }} title="Pick many logo files at once -- each lands on the brand its filename names (Bud Light.png, michelob-ultra.svg, BUD_LT.png)">
+        Upload logos<input type="file" accept="image/*,.svg" multiple disabled={!!busy} onChange={bulkUpload} style={{ display: "none" }} />
+      </label>
       {data && data.aiOn === false && <span style={{ fontSize: 12, color: C.redDeep, fontWeight: 600 }}>No ANTHROPIC_API_KEY on the server: recognition and logo checks run without the AI.</span>}
     </div>
     {msg && <div style={{ marginBottom: 10, background: C.winSoft, color: C.win, borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 600 }}>{msg}</div>}

@@ -164,6 +164,12 @@ function createApp(pool, opts) {
   const adminOnly = (fn) => wrap(async (req) => (tagupMod.canAdmin(req.session) ? fn(req) : { error: "forbidden", status: 403 }));
   app.post("/api/brands/recognize", requireOrg, adminOnly((req) => brandsMod.recognize(req.session, req.body)));
   app.post("/api/brands/find", requireOrg, adminOnly((req) => brandsMod.find(req.session, req.body)));
+  app.post("/api/brands/upload", requireOrg, upload.array("files", 200), wrap(async (req) => {
+    if (!tagupMod.canAdmin(req.session)) return { error: "forbidden", status: 403 };
+    const files = (req.files || []).map((f) => ({ name: f.originalname, mime: f.mimetype, buf: f.buffer }));
+    if (!files.length) return { error: "no files" };
+    return brandsMod.bulkUpload(req.session, files);
+  }));
   app.post("/api/brands/approve-confident", requireOrg, wrap(async (req) => { if (!tagupMod.canAdmin(req.session)) return { error: "forbidden", status: 403 }; return brandsMod.approveConfident(req.session, req.body); }));
   app.post("/api/brands/:key/pick", requireOrg, wrap(async (req) => brandsMod.pick(req.session, req.params.key, req.body)));
   app.post("/api/brands/:key/approve", requireOrg, wrap(async (req) => brandsMod.setStatus(req.session, req.params.key, "approved")));
