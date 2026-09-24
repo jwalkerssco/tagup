@@ -164,6 +164,7 @@ function createApp(pool, opts) {
   const adminOnly = (fn) => wrap(async (req) => (tagupMod.canAdmin(req.session) ? fn(req) : { error: "forbidden", status: 403 }));
   app.post("/api/brands/recognize", requireOrg, adminOnly((req) => brandsMod.recognize(req.session, req.body)));
   app.post("/api/brands/find", requireOrg, adminOnly((req) => brandsMod.find(req.session, req.body)));
+  app.post("/api/brands/import-vip", requireOrg, wrap(async (req) => (tagupMod.canAdmin(req.session) ? brandsMod.importVip(req.session, req.body) : { error: "forbidden", status: 403 })));
   app.post("/api/brands/upload", requireOrg, upload.array("files", 200), wrap(async (req) => {
     if (!tagupMod.canAdmin(req.session)) return { error: "forbidden", status: 403 };
     const files = (req.files || []).map((f) => ({ name: f.originalname, mime: f.mimetype, buf: f.buffer }));

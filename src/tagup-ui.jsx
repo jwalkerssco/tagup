@@ -1079,6 +1079,20 @@ function BrandsPanel({ ui }) {
     } catch (e) { setMsg("Couldn't reach the server."); }
     setBusy("");
   }
+  // VIP Brand Builder: the distributor's public catalog, one logo per brand.
+  async function importVip() {
+    const saved = (data && data.vipDistributorId) || "";
+    const id = window.prompt("Your VIP distributor id -- the number in your Brand Builder / Retailer Portal link (products.vtinfo.com/brandbuilder/XXXXX). Logos land only on brands that have none yet.", saved);
+    if (id == null || !String(id).trim()) return;
+    setBusy("vip"); setMsg("");
+    try {
+      const r = await jpost(ui, "/api/brands/import-vip", { distributorId: String(id).trim() });
+      if (r && r.error) setMsg(r.error);
+      else setMsg(`VIP lists ${r.vipBrands} brands, ${r.vipWithLogo} with a logo. Imported ${r.matched.length} onto your ${r.orgBrands} brands${r.matched.length ? " (" + r.matched.slice(0, 8).map((m) => m.brand).join(", ") + (r.matched.length > 8 ? "…" : "") + ")" : ""}.` + (r.unmatched.length ? ` ${r.unmatched.length} still without one -- VIP spells them differently or has no logo; Upload logos or Find logos covers the rest.` : "") + (r.failed.length ? ` ${r.failed.length} failed (${r.failed[0].why}).` : ""));
+      load();
+    } catch (ex) { setMsg("Couldn't reach the server."); }
+    setBusy("");
+  }
   // The supplier's asset library, dropped in whole: filenames name the brands.
   async function bulkUpload(e) {
     const files = Array.from(e.target.files || []); e.target.value = "";
@@ -1116,6 +1130,7 @@ function BrandsPanel({ ui }) {
       <Btn ui={ui} kind="navy" small disabled={!!busy} onClick={() => run("recognize", "/api/brands/recognize", { fromCatalog: true })}>{busy === "recognize" ? "Recognizing…" : "1 · Recognize brands"}</Btn>
       <Btn ui={ui} kind="navy" small disabled={!!busy} onClick={() => run("find", "/api/brands/find", { limit: 15 })}>{busy === "find" ? "Searching…" : "2 · Find logos (15 at a time)"}</Btn>
       <Btn ui={ui} kind="gold" small disabled={!!busy || !counts.found} onClick={() => { if (window.confirm("Approve every found logo the AI rated 90% or better?")) run("approve-confident", "/api/brands/approve-confident", { min: 0.9 }); }}>3 · Approve all ≥ 90%</Btn>
+      <Btn ui={ui} kind="navy" small disabled={!!busy} onClick={importVip} title="Your distributor catalog on VIP Brand Builder carries a logo for most brands -- pull them all in one go">{busy === "vip" ? "Importing from VIP…" : "Import from VIP"}</Btn>
       <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 9, border: `2px solid ${C.navy}`, fontFamily: ui.HEAD, fontWeight: 700, fontSize: 12, textTransform: "uppercase", color: C.navy, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }} title="Pick many logo files at once -- each lands on the brand its filename names (Bud Light.png, michelob-ultra.svg, BUD_LT.png)">
         Upload logos<input type="file" accept="image/*,.svg" multiple disabled={!!busy} onChange={bulkUpload} style={{ display: "none" }} />
       </label>

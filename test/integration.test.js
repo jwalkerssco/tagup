@@ -419,6 +419,39 @@ ta("rep-owned accounts: a rep's picker shows only their accounts; no match falls
   });
 });
 
+ta("VIP Brand Builder import: logos land as the org's overrides, dry run writes nothing, the distributor id is remembered", async () => {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  const feed = { code: 200, data: [{ group_name: "All", brands: [{ brand_id: "1", brand_name: "Bud Light", brand_logo: "https://images.vtinfo.com/budlight.png" }, { brand_id: "2", brand_name: "Nobody Brewing", brand_logo: "https://images.vtinfo.com/nobody.png" }] }] };
+  const calls = [];
+  const fakeFetch = async (url) => { calls.push(String(url)); if (/\/distributor\/02308\/brands$/.test(url)) return { ok: true, status: 200, json: async () => feed, headers: { get: () => "application/json" } }; if (/\/distributor\//.test(url)) return { ok: false, status: 404, json: async () => ({}), headers: { get: () => "" } }; return { ok: true, status: 200, arrayBuffer: async () => png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength), headers: { get: () => "image/png" } }; };
+  const pool = freshPool();
+  const app = createApp(pool, { sendEmail: async () => {}, fetch: fakeFetch });
+  const server = http.createServer(app); await new Promise((res) => server.listen(0, res));
+  try {
+    const client = makeClient(server, server.address().port);
+    const a = await signupOrg(client, "VIP Co", "own@vip.com");
+    const A = client.as(a.token, a.org.id);
+    await A.post("/api/brands/recognize", { names: ["BUD LT", "Coors Light"] });
+    const dry = await A.post("/api/brands/import-vip", { distributorId: "02308", dryRun: true });
+    ok(dry.body.ok, JSON.stringify(dry.body)); ok(dry.body.dryRun); eq(dry.body.vipBrands, 2); eq(dry.body.matched.map((m) => m.brand), ["Bud Lt"]); eq(dry.body.unmatched, ["Coors Light"]);
+    ok(!calls.some((c) => /budlight\.png/.test(c)), "dry run downloads nothing");
+    eq((await A.get("/api/brands")).body.brands.filter((b) => b.overridden).length, 0);
+    const real = await A.post("/api/brands/import-vip", { distributorId: "02308" });
+    eq(real.body.matched.length, 1); eq(real.body.failed.length, 0);
+    const list = await A.get("/api/brands");
+    const bl = list.body.brands.find((b) => b.key === "bud-lt"); ok(bl.overridden && bl.orgLogoKey, "the VIP logo is this org's override");
+    eq(list.body.vipDistributorId, "02308", "remembered for next time");
+    const again = await A.post("/api/brands/import-vip", { distributorId: "02308" });
+    eq(again.body.matched.length, 0, "a brand that already has a logo is left alone unless replace is asked");
+    eq((await A.post("/api/brands/import-vip", { distributorId: "02308", replace: true })).body.matched.length, 1);
+    eq((await A.post("/api/brands/import-vip", { distributorId: "99999" })).status, 400, "unknown distributor is a clean refusal");
+    // private to the org: another workspace sees no logo on the shared brand
+    const b2 = await signupOrg(client, "Other Co", "own@other.com");
+    const B2 = client.as(b2.token, b2.org.id);
+    ok(!(await B2.get("/api/brands")).body.brands.find((b) => b.key === "bud-lt").overridden);
+  } finally { await new Promise((res) => server.close(res)); }
+});
+
 (async () => {
   for (const [n, f] of queue) {
     try { await f(); console.log("  ok   " + n); pass++; }

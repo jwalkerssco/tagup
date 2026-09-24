@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS orgs (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
+-- The org's VIP Brand Builder distributor id (e.g. 02308), remembered after
+-- the first logo import so a re-import is one click.
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS vip_distributor_id text;
+
 CREATE TABLE IF NOT EXISTS users (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email          text UNIQUE NOT NULL,

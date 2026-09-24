@@ -182,6 +182,16 @@ t("matchFilename: exact, contained, alias, and ambiguous filenames land on the r
   eq(BR.matchFilename("IMG_2231.jpg", brands), null); eq(BR.matchFilename("", brands), null);
 });
 
+t("matchVipBrand: exact beats family, a family logo reaches its variants, a shorter brand never inherits a longer one, VIP abbreviations expand", () => {
+  const vip = [{ brand_id: "1", brand_name: "Bud Light", brand_logo: "u1" }, { brand_id: "2", brand_name: "Michelob Ultra", brand_logo: "u2" }, { brand_id: "3", brand_name: "Modelo Ranch Water", brand_logo: "u3" }, { brand_id: "4", brand_name: "Bud", brand_logo: null }, { brand_id: "5", brand_name: "White Claw", brand_logo: "u5" }];
+  const m = (label, aliases) => { const r = BR.matchVipBrand({ label, aliases: aliases || [] }, vip); return r ? r.vip.brand_name + (r.exact ? "!" : "") : null; };
+  eq(m("Bud Light"), "Bud Light!"); eq(m("Bud Light Platinum"), "Bud Light", "variant takes the family logo");
+  eq(m("Mich Ultra Pure Gold"), "Michelob Ultra", "Mich -> Michelob, then family"); eq(m("Bud Lt", ["BUD LT"]), "Bud Light!", "Lt -> Light");
+  eq(m("WC Sltz Peach"), "White Claw"); eq(m("Modelo"), null, "our shorter brand does not inherit Modelo Ranch Water's logo");
+  eq(m("Bud"), null, "VIP's Bud has no logo"); eq(m("Coors Light"), null);
+  eq(BR.expandWords(["mich", "ult", "n", "a"]), ["michelob", "ultra"]);
+});
+
 /* ---------------- email ---------------- */
 t("email: no POSTMARK_TOKEN means console mode, reported as such, and send still resolves ok", async () => {
   const m = EMAIL.create({});

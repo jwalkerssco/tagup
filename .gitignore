@@ -3,3 +3,4 @@ node_modules
 *.log
 shots/
 public/bundle.js
+scratch/
