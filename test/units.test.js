@@ -110,6 +110,15 @@ t("template field fill: a hex fill is kept, anything else dropped, and the rende
   ok(/class="f f-price[^"]*" style="[^"]*background:#FFFFFF/.test(html), "price box painted"); ok(!/f-size[^"]*" style="[^"]*background:/.test(html), "size box not painted"); ok(/fimg" style="[^"]*background:#FF0000/.test(html), "logo box painted");
 });
 
+t("modern layout: logo circle, price with raised cents, package pill in the accent; falls back to the chain initial; 2-for reads whole", () => {
+  const st = { id: "s", name: "DK", kind: "composed", theme: CORE.themeMerge({ layout: "modern", accent: "#1D4ED8", accentFg: "#FFFFFF" }) };
+  const h = CORE.renderTag({ contentType: "standard_price", itemName: "Michelob Ultra", packageSize: "4pk 16oz Cans", price: 4.99, chainLabel: "DK" }, st, { tagW: 3.667, tagH: 1.417 });
+  ok(/class="tag modern"/.test(h)); ok(/mlogo mini" style="background:#1D4ED8;color:#FFFFFF">D</.test(h), "chain initial when no logo"); ok(/<span class="whole">4<\/span><span class="cents">99/.test(h)); ok(/mpill" style="background:#1D4ED8;color:#FFFFFF">4pk 16oz Cans/.test(h));
+  const withLogo = CORE.renderTag({ contentType: "standard_price", itemName: "Bud Light", price: 5, multiBuyQty: 2, brandLogoKey: "bl_1" }, st, { tagW: 3.667, tagH: 1.417 });
+  ok(/mlogo"><img src="\/api\/assets\/blogo\/bl_1"/.test(withLogo), "brand logo fills the circle"); ok(/class="multi">2\/\$5\.00</.test(withLogo));
+  ok(CORE.LAYOUTS.some((l) => l.id === "modern")); ok(CORE.MATERIAL_PRESETS.some((p) => p.cols === 3 && p.rows === 6 && p.sheetW === 11));
+});
+
 /* ---------------- catalog sheet ---------------- */
 t("parseCatalog finds the header anywhere, maps synonyms, pads a numeric item number", () => {
   const sheets = [{ name: "junk", rows: [["nothing here"]] }, { name: "Price File", rows: [["Standard Sales price file"], [], ["Item #", "Description", "Brand", "Pkg"], [23, "MICH ULT 12PK", "MICH ULT", "12pk"], ["A1234", "Glazer thing", "", ""], ["99", "", "no name -> skipped", ""]] }];

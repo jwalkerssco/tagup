@@ -1255,6 +1255,9 @@ function MaterialForm({ ui, branch, m, Sheet, onClose, onSaved }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div style={{ fontFamily: ui.HEAD, fontWeight: 700, fontSize: 18, color: C.navy, textTransform: "uppercase" }}>{m.isNew ? "New material" : "Edit material"}</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon ui={ui} name="X" size={20} color={C.sub} /></button></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 18 }}>
         <div>
+          <Field ui={ui} label="Start from a preset" hint="The sheet in the printer. Pick one, then adjust the numbers if your stock differs.">
+            <select value="" onChange={(e) => { const p = CORE.MATERIAL_PRESETS[parseInt(e.target.value, 10)]; if (p) set(Object.assign({}, p, { name: f.name || p.name })); }} style={inputStyle(ui)}><option value="">— pick —</option>{CORE.MATERIAL_PRESETS.map((p, i) => <option key={i} value={i}>{p.name} · {p.cols * p.rows}/sheet · {p.sheetW}×{p.sheetH}</option>)}</select>
+          </Field>
           <Field ui={ui} label="Name"><input value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="Shelf talker 3x2" style={inputStyle(ui)} /></Field>
           <div style={{ display: "flex", gap: 10 }}><Num k="tagW" label="Tag width (in)" /><Num k="tagH" label="Tag height (in)" /></div>
           <div style={{ display: "flex", gap: 10 }}><Num k="cols" label="Columns" /><Num k="rows" label="Rows" /></div>

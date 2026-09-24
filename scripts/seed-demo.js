@@ -51,7 +51,7 @@ async function seed(base) {
     { name: "Stripes", chainId: chainId("Stripes"), format: "tag", kind: "composed", theme: { layout: "bold", accent: "#C8102E", accentFg: "#FFFFFF", font: "oswald", caption: "EVERYDAY LOW PRICE" } },
     { name: "7-Eleven", chainId: chainId("7-Eleven"), format: "tag", kind: "composed", theme: { layout: "classic", accent: "#0A6E3F", accentFg: "#FFFFFF", font: "bebas", priceColor: "#0A6E3F" },
       rules: [{ label: "Reg. line", when: { field: "wasPrice", op: "exists" }, set: { note: "Reg. {was}" } }, { label: "2/$5", when: { field: "price", op: "between", lo: 4.9, hi: 5.1 }, set: { accent: "#F7941D", bg: "#F7941D", fg: "#111111" } }] },
-    { name: "Kent Kwik", chainId: chainId("Kent Kwik"), format: "tag", kind: "composed", theme: { layout: "classic", accent: "#1D4ED8", accentFg: "#FFFFFF", font: "anton" } },
+    { name: "Kent Kwik", chainId: chainId("Kent Kwik"), format: "tag", kind: "composed", theme: { layout: "modern", accent: "#1D4ED8", accentFg: "#FFFFFF", font: "oswald" } },
     { name: "Stripes case card", chainId: chainId("Stripes"), format: "case_card", kind: "composed", theme: { layout: "bold", accent: "#C8102E", accentFg: "#FFFFFF", font: "oswald" } },
   ];
   for (const s of styles) { const r = await post("/api/styles", s); if (r.error) throw new Error("style " + s.name + ": " + r.error); }
