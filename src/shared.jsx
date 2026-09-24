@@ -1,6 +1,7 @@
 /* src/shared.jsx -- the app's vocabulary: palette, fonts, the api client,
    the router, and the `ui` object the ported tagup screens read. */
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 // Named imports only: a namespace import of lucide-react re-exported as an
 // object defeats tree-shaking and ships every icon (measured: +900 KB).
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileSpreadsheet, Home, Inbox, Layers, LogOut, Mail, MoreHorizontal, Package, Palette, Pencil, PlayCircle, Plus, Printer, Search, Settings, Smartphone, Sparkles, Store, Tag, Trash2, Upload, Users, X, Zap } from "lucide-react";
@@ -84,13 +85,17 @@ export function Notice({ kind, children, style }) {
   const m = { ok: [TB.postedSoft, TB.posted], warn: [TB.signalSoft, "#8A3A08"], bad: [TB.pullSoft, "#A31D1D"], info: [TB.slateSoft, TB.slate] }[kind || "info"];
   return <div style={Object.assign({ background: m[0], color: m[1], borderRadius: 12, padding: "10px 14px", fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }, style || {})}>{children}</div>;
 }
+// Rendered through a portal onto document.body: position:fixed is measured
+// against the nearest ancestor with a transform/filter/animation, and the
+// content pane's fade-in has one -- so an in-tree modal centered itself inside
+// an 888-row table, thousands of pixels below the window (2026-09-24).
 export function Modal({ title, onClose, children, width }) {
-  return <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(20,17,15,.55)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(20,17,15,.55)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
     <div className="tu-fade" onClick={(e) => e.stopPropagation()} style={{ background: TB.paper, borderRadius: 18, padding: 20, width: "min(" + (width || 640) + "px, 100%)", maxHeight: "92vh", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 18, color: TB.ink }}>{title}</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}><L.X size={20} color={TB.slate} /></button></div>
       {children}
     </div>
-  </div>;
+  </div>, document.body);
 }
 export function PageTitle({ title, sub, right }) {
   return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>

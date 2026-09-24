@@ -7,6 +7,7 @@
    style editor and the print sheet the server renders come from ONE renderer,
    so what is shown is what prints. */
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 const CORE = require("../lib/tagup-core");
 
 
@@ -518,7 +519,7 @@ function EditRequest({ ui, r, styles, onClose, onSaved }) {
     if (x && x.error) setErr(x.error); else onSaved();
   }
   const preview = Object.assign({}, r, f, { price: CORE.toPrice(f.price), wasPrice: CORE.toPrice(f.wasPrice), multiBuyQty: parseInt(f.multiBuyQty, 10) || null, styleIdOverride: f.styleIdOverride || null });
-  return <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} style={{ background: C.paper, borderRadius: 18, padding: 18, width: "min(620px, 100%)", maxHeight: "92vh", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div style={{ fontFamily: ui.HEAD, fontWeight: 700, fontSize: 18, color: C.navy, textTransform: "uppercase" }}>Edit request</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon ui={ui} name="X" size={20} color={C.sub} /></button></div>
       <div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}><TagPreview req={preview} style={styleFor(styles, preview)} widthPx={f.format === "case_card" ? 200 : 260} /></div>
@@ -544,7 +545,7 @@ function EditRequest({ ui, r, styles, onClose, onSaved }) {
       {err && <div style={{ color: C.redDeep, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><Btn ui={ui} onClick={onClose}>Cancel</Btn><Btn ui={ui} kind="gold" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Btn></div>
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 /* ---------------- Excel import / export ---------------- */
@@ -599,7 +600,7 @@ function ImportModal({ ui, branch, bq, setup, onClose, onDone }) {
   const shown = showAll ? rows : rows.filter((r) => r.status !== "ok").concat(rows.filter((r) => r.status === "ok")).slice(0, 60);
   const St = ({ s }) => { const m = { ok: ["OK", "#fff", C.win], adjusted: ["Adjusted", C.navy, C.goldSoft], error: ["Error", "#fff", C.red], skipped: ["Skipped", C.sub, C.line] }[s] || [s, C.sub, C.line]; return <Chip ui={ui} small color={m[1]} bg={m[2]}>{m[0]}</Chip>; };
   const Seg = ({ value, options, onPick }) => <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{options.map((o) => <button key={o.id} onClick={() => onPick(o.id)} style={{ padding: "7px 10px", borderRadius: 10, border: `2px solid ${value === o.id ? C.gold : C.line}`, background: value === o.id ? C.goldSoft : "#fff", fontFamily: ui.HEAD, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", cursor: "pointer" }}>{o.label}</button>)}</div>;
-  return <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} style={{ background: C.paper, borderRadius: 18, padding: 18, width: "min(1000px, 100%)", maxHeight: "94vh", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><div style={{ fontFamily: ui.HEAD, fontWeight: 700, fontSize: 18, color: C.navy, textTransform: "uppercase" }}>Import a price book</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon ui={ui} name="X" size={20} color={C.sub} /></button></div>
       <div style={{ fontSize: 13, color: C.sub, marginBottom: 12, lineHeight: 1.55 }}>A spreadsheet with a <b>Brand</b> (or Item Description), <b>Package</b> and <b>Price</b> column — the header can be on any row, and Was / Type / Format / Store / Quantity / Alt text / Item # are read when they are there. Prices like <i>2/$3</i>, <i>10 for $10</i> and <i>2/$5 or $2.69 each</i> are understood. <a href="#" onClick={(e) => { e.preventDefault(); downloadAuth(ui, "/api/import/template", "tagup-import-template.xlsx"); }} style={{ color: C.navy, fontWeight: 700 }}>Download the template</a>.</div>
@@ -649,7 +650,7 @@ function ImportModal({ ui, branch, bq, setup, onClose, onDone }) {
         </div>
       </div>}
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 /* ---------------- batches ---------------- */
@@ -872,7 +873,7 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
   const Color = ({ k, label }) => <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.ink }}><input type="color" value={th[k]} onChange={(e) => setT({ [k]: e.target.value })} style={{ width: 34, height: 28, border: "none", background: "none", padding: 0 }} />{label}</label>;
   const Toggle = ({ k, label }) => <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.ink }}><input type="checkbox" checked={!!th[k]} onChange={(e) => setT({ [k]: e.target.checked })} />{label}</label>;
   const Seg = ({ value, options, onPick }) => <div style={{ display: "flex", gap: 6 }}>{options.map((o) => <button key={o.id} onClick={() => onPick(o.id)} title={o.sub} style={{ flex: 1, padding: "8px 6px", borderRadius: 10, border: `2px solid ${value === o.id ? C.gold : C.line}`, background: value === o.id ? C.goldSoft : "#fff", fontFamily: ui.HEAD, fontWeight: 700, fontSize: 12, textTransform: "uppercase", cursor: "pointer" }}>{o.label}</button>)}</div>;
-  return <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} style={{ background: C.paper, borderRadius: 18, padding: 18, width: "min(1080px, 100%)", maxHeight: "94vh", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div style={{ fontFamily: ui.HEAD, fontWeight: 700, fontSize: 18, color: C.navy, textTransform: "uppercase" }}>{s.isNew ? "New style" : "Edit style"}</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon ui={ui} name="X" size={20} color={C.sub} /></button></div>
       <div style={{ display: "grid", gridTemplateColumns: isTpl ? "minmax(0, 300px) minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)", gap: 18 }}>
@@ -946,7 +947,7 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
       {err && <div style={{ color: C.redDeep, fontSize: 13, fontWeight: 600, marginTop: 10 }}>{err}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}><Btn ui={ui} onClick={onClose}>Cancel</Btn><Btn ui={ui} kind="gold" disabled={busy || tplBusy || !s.name.trim()} onClick={save}>{busy ? "Saving…" : "Save style"}</Btn></div>
     </div>
-  </div>;
+  </div>, document.body);
 }
 /* The placement canvas: the artwork at a fixed width, every placed field a
    draggable / resizable box (pointer events, so a finger works too), and a
@@ -1170,7 +1171,7 @@ function MaterialForm({ ui, branch, m, Sheet, onClose, onSaved }) {
   const n = CORE.normalizeMaterial(f);
   async function save() { setBusy(true); setErr(""); const x = await jpost(ui, "/api/materials", Object.assign({ branch, id: f.id }, f)); setBusy(false); if (x && x.error) setErr(x.error); else onSaved(); }
   const Num = ({ k, label, step }) => <Field ui={ui} label={label}><input inputMode="decimal" value={f[k]} onChange={(e) => set({ [k]: e.target.value })} style={inputStyle(ui)} /></Field>;
-  return <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(11,30,57,.6)", display: "grid", placeItems: "center", padding: 16 }} onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} style={{ background: C.paper, borderRadius: 18, padding: 18, width: "min(640px, 100%)", maxHeight: "92vh", overflowY: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div style={{ fontFamily: ui.HEAD, fontWeight: 700, fontSize: 18, color: C.navy, textTransform: "uppercase" }}>{m.isNew ? "New material" : "Edit material"}</div><button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon ui={ui} name="X" size={20} color={C.sub} /></button></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 18 }}>
@@ -1186,7 +1187,7 @@ function MaterialForm({ ui, branch, m, Sheet, onClose, onSaved }) {
       {err && <div style={{ color: C.redDeep, fontSize: 13, fontWeight: 600, marginTop: 10 }}>{err}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}><Btn ui={ui} onClick={onClose}>Cancel</Btn><Btn ui={ui} kind="gold" disabled={busy || !n.ok} onClick={save}>{busy ? "Saving…" : "Save material"}</Btn></div>
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 export { RepScreen, Section, Queue, Batches, StylesEditor, StyleForm, MaterialsEditor, BrandsPanel, ImportModal, TagPreview, CORE, TagUpMark, Wordmark, TB, TAGLINE, TABULAR, Card, Btn, Eyebrow, Chip, Field, inputStyle, StatusChip, EmptyState, Icon, jget, jpost, jput, qs, ago, downloadAuth };

@@ -19,7 +19,7 @@
   input, select, button, textarea { font-family: inherit; }
   a { color: inherit; }
   ::selection { background: #FFE3D0; }
-  @keyframes tu-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes tu-fade { from { opacity: 0; } to { opacity: 1; } }  /* opacity only: a transform here makes Chrome treat the pane as the containing block for position:fixed, and a modal then centers inside a 40,000px-tall table instead of the window (2026-09-24) */
   .tu-fade { animation: tu-fade .28s ease-out both; }
   @media print { body { background: #fff; } }
 </style>
