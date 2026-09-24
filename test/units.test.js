@@ -102,6 +102,14 @@ t("the presets normalize clean and the tier preset colours a 2/$5 tag orange", (
   eq(CORE.applyRules(reg.rules, th, Object.assign({}, base, { contentType: "promo", wasPrice: 6.49 })).req.note, "Reg. $6.49");
 });
 
+t("template field fill: a hex fill is kept, anything else dropped, and the renderer paints it under the field", () => {
+  const f = CORE.normalizeFields([{ key: "price", x: 30, y: 60, w: 60, h: 30, fill: "#FFFFFF" }, { key: "size", x: 5, y: 40, w: 50, h: 10, fill: "white" }, { key: "brandLogo", x: 2, y: 2, w: 20, h: 40, fill: "#FF0000" }]);
+  eq(f.map((x) => x.fill), ["#FFFFFF", null, "#FF0000"]);
+  const style = { id: "s", kind: "template", format: "tag", name: "DK", templateKey: "tt_x", templateW: 3.667, templateH: 1.417, fields: f };
+  const html = CORE.renderTag({ contentType: "standard_price", itemName: "Michelob Ultra", packageSize: "4pk 16oz Cans", price: 4.99, brandLogoKey: "bl_1" }, style, { tagW: 3.667, tagH: 1.417 });
+  ok(/class="f f-price[^"]*" style="[^"]*background:#FFFFFF/.test(html), "price box painted"); ok(!/f-size[^"]*" style="[^"]*background:/.test(html), "size box not painted"); ok(/fimg" style="[^"]*background:#FF0000/.test(html), "logo box painted");
+});
+
 /* ---------------- catalog sheet ---------------- */
 t("parseCatalog finds the header anywhere, maps synonyms, pads a numeric item number", () => {
   const sheets = [{ name: "junk", rows: [["nothing here"]] }, { name: "Price File", rows: [["Standard Sales price file"], [], ["Item #", "Description", "Brand", "Pkg"], [23, "MICH ULT 12PK", "MICH ULT", "12pk"], ["A1234", "Glazer thing", "", ""], ["99", "", "no name -> skipped", ""]] }];

@@ -710,6 +710,22 @@ function loadPdfJs() {
   return _pdfjsLoading;
 }
 const TPL_MAX_PX = 2400;
+// One cell out of a sheet of tags: equal grid, 1-based cell number, row-major.
+// Returns the cropped tag as a data URL plus its share of the sheet.
+function cropCellImage(dataUrl, cols, rows, cell) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = Math.max(1, cols | 0), r = Math.max(1, rows | 0), n = Math.min(c * r, Math.max(1, cell | 0)) - 1;
+      const cw = img.width / c, ch = img.height / r;
+      const cv = document.createElement("canvas"); cv.width = Math.round(cw); cv.height = Math.round(ch);
+      cv.getContext("2d").drawImage(img, (n % c) * cw, Math.floor(n / c) * ch, cw, ch, 0, 0, cv.width, cv.height);
+      res({ dataUrl: cv.toDataURL("image/png"), fracW: 1 / c, fracH: 1 / r });
+    };
+    img.onerror = () => rej(new Error("Couldn't read the artwork to crop it."));
+    img.src = dataUrl;
+  });
+}
 async function fileToTemplateImage(file) {
   if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
     const lib = await loadPdfJs();
@@ -834,6 +850,8 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
   const [tplData, setTplData] = useState(null);         // a new artwork upload, not yet saved
   const [tplBusy, setTplBusy] = useState(false);
   const [tryReq, setTryReq] = useState({ price: "", multi: "", was: "" });   // "try a price" over the sample
+  const [crop, setCrop] = useState({ open: false, cols: 3, rows: 6, cell: 1 });   // artwork is a whole sheet: cut one tag out
+  const sheetRef = useRef(null);                                              // the uploaded sheet, kept so a re-crop starts from the original
   const th = CORE.themeMerge(s.theme);
   const isTpl = s.kind === "template";
   const setT = (p) => setS((v) => Object.assign({}, v, { theme: Object.assign({}, v.theme, p) }));
@@ -850,8 +868,25 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
     try {
       const r = await fileToTemplateImage(f);
       setTplData(r.dataUrl);
+      sheetRef.current = { dataUrl: r.dataUrl, inW: r.inW, inH: r.inH };
       if (r.inW && r.inH) setS((v) => Object.assign({}, v, { templateW: r.inW, templateH: r.inH }));
       if (r.pages > 1) setErr("That PDF has " + r.pages + " pages — page 1 is the template. Export a single page if that is wrong.");
+    } catch (ex) { setErr(String(ex && ex.message || ex)); }
+    setTplBusy(false);
+  }
+  async function cropSheet() {
+    let src = sheetRef.current && sheetRef.current.dataUrl;
+    if (!src && s.templateKey) {
+      // artwork already on file: pull it back as a data URL so the crop starts from the original
+      try { const blob = await fetch("/api/assets/ttpl/" + encodeURIComponent(s.templateKey)).then((r) => r.blob()); src = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.readAsDataURL(blob); }); sheetRef.current = { dataUrl: src, inW: parseFloat(s.templateW) || null, inH: parseFloat(s.templateH) || null }; } catch (e) { setErr("Couldn't load the artwork on file."); return; }
+    }
+    if (!src) { setErr("Upload the sheet first."); return; }
+    setTplBusy(true); setErr("");
+    try {
+      const out = await cropCellImage(src, crop.cols, crop.rows, crop.cell);
+      setTplData(out.dataUrl);
+      const sh = sheetRef.current;
+      if (sh && sh.inW && sh.inH) setS((v) => Object.assign({}, v, { templateW: Math.round(sh.inW * out.fracW * 1000) / 1000, templateH: Math.round(sh.inH * out.fracH * 1000) / 1000 }));
     } catch (ex) { setErr(String(ex && ex.message || ex)); }
     setTplBusy(false);
   }
@@ -888,12 +923,22 @@ function StyleForm({ ui, branch, chains, style, onClose, onSaved }) {
           <Field ui={ui} label="Format"><Seg value={s.format} options={CORE.FORMATS} onPick={(id) => setS((v) => { const sz = CORE.defaultTemplateSize(id); const fresh = v.isNew && !tplData; return Object.assign({}, v, { format: id, templateW: fresh ? sz.w : v.templateW, templateH: fresh ? sz.h : v.templateH, fields: fresh ? CORE.defaultTemplateFields(id) : v.fields }); })} /></Field>
           <Field ui={ui} label="Made from"><Seg value={s.kind} options={[{ id: "template", label: "Chain template", sub: "The chain's own artwork" }, { id: "composed", label: "Layout", sub: "Colors, font, logo" }]} onPick={(id) => setS((v) => Object.assign({}, v, { kind: id, fields: v.fields && v.fields.length ? v.fields : CORE.defaultTemplateFields(v.format) }))} /></Field>
           {isTpl && <>
-            <Field ui={ui} label="Artwork" hint="PNG, JPG or a one-page PDF of the chain's tag or sign. Fields go on top of it.">
+            <Field ui={ui} label="Artwork" hint="PNG, JPG or a one-page PDF of ONE blank tag or sign -- the live price, package and brand logo go on top of it. Got a whole sheet of sample tags instead? Crop one out below.">
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <input type="file" accept="image/*,application/pdf,.pdf" onChange={onTemplate} style={{ fontSize: 12 }} />
                 {tplBusy && <span style={{ fontSize: 12, color: C.sub }}>Reading…</span>}
                 {(s.templateKey || tplData) && !tplBusy && <span style={{ fontSize: 12, color: C.win, fontWeight: 700 }}>{tplData ? "New artwork ready" : "Artwork on file"}</span>}
               </div>
+              {(s.templateKey || tplData) && <div style={{ marginTop: 8 }}>
+                <button type="button" onClick={() => setCrop(Object.assign({}, crop, { open: !crop.open }))} style={{ background: "none", border: "none", padding: 0, color: C.navy, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{crop.open ? "▾" : "▸"} The artwork is a whole sheet of tags — crop one</button>
+                {crop.open && <div style={{ marginTop: 6, background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 10 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                    {[["cols", "Columns"], ["rows", "Rows"], ["cell", "Take tag #"]].map(([k, label]) => <label key={k} style={{ fontSize: 11, fontFamily: ui.HEAD, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: C.sub }}>{label}<input inputMode="numeric" value={crop[k]} onChange={(e) => setCrop(Object.assign({}, crop, { [k]: e.target.value.replace(/[^0-9]/g, "") }))} style={Object.assign({}, inputStyle(ui), { width: 70, padding: "6px 8px", fontSize: 13, display: "block", marginTop: 3 })} /></label>)}
+                    <Btn ui={ui} kind="navy" small disabled={tplBusy} onClick={cropSheet}>Crop</Btn>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: C.mute, marginTop: 6, lineHeight: 1.5 }}>An equal grid, counted left to right then down. The printed size becomes the sheet's size divided by the grid; adjust it after if the sheet has margins. Sample text printed on the artwork ($4.99, a placeholder logo) stays in the picture — place the live field over it and give the field a <b>Fill</b> so it covers what is underneath.</div>
+                </div>}
+              </div>}
             </Field>
             <div style={{ display: "flex", gap: 10 }}>
               <Field ui={ui} label="Printed width (in)"><input inputMode="decimal" value={s.templateW || ""} onChange={(e) => setS((v) => Object.assign({}, v, { templateW: e.target.value }))} style={inputStyle(ui)} /></Field>
@@ -1001,7 +1046,7 @@ function PlacementEditor({ ui, style, fields, onChange, sample }) {
         const val = spec.image ? (sample.brandLogoSrc ? "" : "(" + spec.label + ")") : (CORE.fieldValue(f, sample, style) || (f.on ? "(" + spec.label + ")" : ""));
         const on = f.on !== false, isSel = i === sel;
         const font = CORE.FONTS[f.font] || CORE.FONTS.oswald;
-        return <div key={i} onPointerDown={(e) => down(e, i, "move")} style={{ position: "absolute", left: f.x + "%", top: f.y + "%", width: f.w + "%", height: f.h + "%", border: `${isSel ? 2 : 1.5}px ${isSel ? "solid" : "dashed"} ${isSel ? C.gold : on ? "rgba(16,42,76,.6)" : "rgba(0,0,0,.25)"}`, background: isSel ? "rgba(224,178,60,.12)" : "rgba(255,255,255,.04)", cursor: "move", display: "flex", alignItems: f.valign === "top" ? "flex-start" : f.valign === "bottom" ? "flex-end" : "center", justifyContent: f.align === "center" ? "center" : f.align === "right" ? "flex-end" : "flex-start", overflow: "hidden", boxSizing: "border-box", opacity: on ? 1 : 0.45 }}>
+        return <div key={i} onPointerDown={(e) => down(e, i, "move")} style={{ position: "absolute", left: f.x + "%", top: f.y + "%", width: f.w + "%", height: f.h + "%", border: `${isSel ? 2 : 1.5}px ${isSel ? "solid" : "dashed"} ${isSel ? C.gold : on ? "rgba(16,42,76,.6)" : "rgba(0,0,0,.25)"}`, background: f.fill ? f.fill : (isSel ? "rgba(224,178,60,.12)" : "rgba(255,255,255,.04)"), cursor: "move", display: "flex", alignItems: f.valign === "top" ? "flex-start" : f.valign === "bottom" ? "flex-end" : "center", justifyContent: f.align === "center" ? "center" : f.align === "right" ? "flex-end" : "flex-start", overflow: "hidden", boxSizing: "border-box", opacity: on ? 1 : 0.45 }}>
           {spec.image && sample.brandLogoSrc && <img src={sample.brandLogoSrc} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }} />}
           <span style={{ fontSize: spec.image ? 11 : Math.max(6, f.size / 100 * H), lineHeight: 1, color: spec.image ? C.sub : f.color, fontFamily: f.weight === "bold" ? font.head : font.css, fontWeight: f.weight === "bold" ? 700 : 400, textTransform: f.upper ? "uppercase" : "none", whiteSpace: specOf(f.key).wrap ? "normal" : "nowrap", textDecoration: f.key === "was" ? "line-through" : "none", textAlign: f.align, padding: "0 2px" }}>{val}</span>
           <span style={{ position: "absolute", left: 0, top: 0, fontSize: 9, background: isSel ? C.gold : "rgba(16,42,76,.7)", color: isSel ? C.navy : "#fff", padding: "1px 5px", fontFamily: ui.HEAD, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase", pointerEvents: "none" }}>{specOf(f.key).label.split(" (")[0]}</span>
@@ -1031,6 +1076,7 @@ function PlacementEditor({ ui, style, fields, onChange, sample }) {
         {!specOf(cur.key).image && <Prop label="Weight"><SegB value={cur.weight} options={["bold", "normal"]} onPick={(v) => upd(sel, { weight: v })} /></Prop>}
         {!specOf(cur.key).image && <Prop label="Color"><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="color" value={cur.color} onChange={(e) => upd(sel, { color: e.target.value })} style={{ width: 34, height: 28, border: "none", background: "none", padding: 0 }} /><label style={{ fontSize: 12, color: C.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={cur.upper} onChange={(e) => upd(sel, { upper: e.target.checked })} /> CAPS</label></div></Prop>}
         {specOf(cur.key).image && <div style={{ fontSize: 12, color: C.sub, alignSelf: "center" }}>The approved brand logo fills this box, kept in proportion. No approved logo, no box.</div>}
+        <Prop label="Fill"><div style={{ display: "flex", gap: 6, alignItems: "center" }}><label style={{ fontSize: 12, color: C.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={!!cur.fill} onChange={(e) => upd(sel, { fill: e.target.checked ? "#FFFFFF" : null })} /> box behind</label>{cur.fill && <input type="color" value={cur.fill} onChange={(e) => upd(sel, { fill: e.target.value })} style={{ width: 34, height: 28, border: "none", background: "none", padding: 0 }} />}</div></Prop>
         {cur.key === "price" && <Prop label="Cents"><SegB value={cur.cents || "super"} options={["super", "plain"]} onPick={(v) => upd(sel, { cents: v })} /></Prop>}
         {cur.key === "text" && <Prop label="Text"><input value={cur.text || ""} onChange={(e) => upd(sel, { text: e.target.value })} style={small()} /></Prop>}
       </div>
