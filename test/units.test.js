@@ -127,6 +127,15 @@ t("parseStoreSheet reads Address, Sales Rep and Sales Rep # (a route number, eve
   const alt = parseStoreSheet([{ name: "s", rows: [["Customer", "Route", "Salesman", "Street"], ["A", "21063.0", "J E", "1 Main"]] }]);
   eq(alt.rows[0], { name: "A", storeNo: null, address: "1 Main", city: "", chain: "", repName: "J E", repNo: "21063", team: "" }, "Route -> rep #, Salesman -> rep, Street -> address, and 21063.0 -> 21063");
 });
+t("parseStoreSheet reads VIP's PLURAL headers (Chains, Sales Reps) and treats *INDEPENDENT as no chain", () => {
+  const r = parseStoreSheet([{ name: "Sheet0", rows: [["Chains", "Account Name", "Address", "City", "Account #", "Sales Reps", "Sales Rep #", "Market Types", ""], ["Wal Mart East", "Quality Lic-Walmart #3645", "200 Ih 20 West", "MIDLAND", "02195", "T Polito", "21075", "Supercenter", ""], ["*INDEPENDENT", "AAA Liquor", "207 W 42nd Street", "Odessa", "01011", "J Esquivel", "21062", "Pkg Lqr", ""]] }]);
+  ok(r.ok); eq(r.columns, ["chain", "name", "address", "city", "storeNo", "repName", "repNo"]);
+  eq(r.rows[0].chain, "Wal Mart East"); eq(r.rows[0].repName, "T Polito"); eq(r.rows[0].repNo, "21075"); eq(r.rows[0].storeNo, "02195", "a string account # keeps its zero");
+  eq(r.rows[1].chain, "*INDEPENDENT", "the raw cell is kept; chainKeyFor treats it as no chain");
+  const TAGUP = require("../lib/tagup");
+  ok(TAGUP.isChainNoise("*INDEPENDENT") && TAGUP.isChainNoise("Independent") && TAGUP.isChainNoise("indy") && TAGUP.isChainNoise(" * Independent "));
+  ok(!TAGUP.isChainNoise("Kent") && !TAGUP.isChainNoise("Pilot Travel C"));
+});
 t("parseStoreSheet refuses a sheet with no name column", () => {
   const r = parseStoreSheet([{ name: "s", rows: [["City", "Chain"], ["Odessa", "Stripes"]] }]);
   ok(r.error && /Name/.test(r.error));
